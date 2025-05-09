@@ -154,7 +154,7 @@ try:
         st.subheader("Filtered Financial Metrics")
 
         # Filter the metrics table to include only the required columns
-        required_columns = ["code", "eps_ttm", "bvps", "dps", "cum_np", "roe", "da_ttm", "roa_ttm"]
+        required_columns = ["code", "eps_ttm", "bvps", "dps", "cum_np", "roe", "roa_ttm"]
         df_metrics = df_metrics[required_columns]
 
         # --- Query stock_analysis_all_results for closing_price ---
@@ -211,8 +211,31 @@ try:
                     "closing_price": "Latest Close Price"
                 }, inplace=True)
 
+                # --- Add Checkboxes for Column Selection ---
+                st.subheader("Select Columns to Display")
+                default_columns = ["PER", "PBV", "DY(%)", "Latest Close Price"]
+                all_columns = df_combined.columns.tolist()
+
+                selected_columns = []
+                for column in all_columns:
+                    if column in default_columns:
+                        checked = True
+                    else:
+                        checked = False
+                    if st.checkbox(f"Show {column}", value=checked):
+                        selected_columns.append(column)
+
+                # Filter the DataFrame to include only selected columns
+                df_filtered = df_combined[selected_columns]
+                
                 # Display the resulting DataFrame
-                st.dataframe(df_combined)
+                if "DY(%)" in df_filtered.columns:
+                    df_filtered = df_filtered.sort_values(by="DY(%)", ascending=False)
+
+                # Display the resulting DataFrame
+                st.dataframe(df_filtered)
+                
+                
 
             except Exception as e:
                 st.error(f"Error querying stock_analysis_all_results: {e}")
