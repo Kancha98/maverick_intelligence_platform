@@ -58,13 +58,15 @@ def do_login(oauth_client):
     user_info_endpoint = oauth_config['user_info_endpoint']  # Retrieve user_info_endpoint
 
     # Construct the authorization URL
-    redirect_uri = "http://localhost:8501"
+    redirect_uri = oauth_client.redirect_uri
     auth_url = f"{oauth_client.authorize_endpoint}?response_type=code&client_id={oauth_client.client_id}&redirect_uri={redirect_uri}&scope={scope}"
-
+    
+    
     # Display the login button
     if st.button("Login with Google"):
         # Redirect the user to the authorization URL
         st.set_query_params(**{})  # Clear any existing query params
+        st.write("Authorization URL:", auth_url)
         st.write(f'<meta http-equiv="refresh" content="0; url={auth_url}">', unsafe_allow_html=True)
 
     # Handle the authorization response
