@@ -35,7 +35,6 @@ def get_oauth_client():
         "client_secret": client_secret,
         "authorize_endpoint": oauth_config['auth_endpoint'],
         "access_token_endpoint": oauth_config['token_endpoint'],
-        "redirect_uri": oauth_config['redirect_uri'],
     })
 
     # Create OAuth2 client
@@ -44,7 +43,6 @@ def get_oauth_client():
         client_secret=client_secret,
         authorize_endpoint=oauth_config['auth_endpoint'],  # Map to authorize_endpoint
         access_token_endpoint=oauth_config['token_endpoint'],  # Map to access_token_endpoint
-        redirect_uri=oauth_config['redirect_uri'],  # Set redirect_uri from config.yaml
     )
 
 # Initialize the OAuth client
