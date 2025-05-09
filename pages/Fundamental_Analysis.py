@@ -213,7 +213,7 @@ try:
 
                 # --- Add Checkboxes for Column Selection ---
                 st.subheader("Select Columns to Display")
-                default_columns = ["PER", "PBV", "DY(%)", "Latest Close Price"]
+                default_columns = ["PER", "PBV", "DY(%)", "Latest Close Price","code"]
                 all_columns = df_combined.columns.tolist()
 
                 selected_columns = []
@@ -222,7 +222,7 @@ try:
                         checked = True
                     else:
                         checked = False
-                    if st.checkbox(f"Show {column}", value=checked):
+                    if st.checkbox(f"Select {column}", value=checked):
                         selected_columns.append(column)
 
                 # Filter the DataFrame to include only selected columns
