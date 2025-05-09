@@ -1,2 +1,1 @@
-# maverick_intelligence_platform
-Web Platform
+# cse_maverick_app
