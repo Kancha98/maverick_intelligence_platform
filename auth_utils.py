@@ -29,14 +29,6 @@ def get_oauth_client():
         st.error("Google Client Secret not found.")
         st.stop()
 
-    # Debugging: Print OAuth2 arguments
-    st.write("OAuth2 Arguments:", {
-        "client_id": oauth_config['client_id'],
-        "client_secret": client_secret,
-        "authorize_endpoint": oauth_config['auth_endpoint'],
-        "access_token_endpoint": oauth_config['token_endpoint'],
-    })
-
     # Create OAuth2 client
     return OAuth2(
         client_id=oauth_config['client_id'],
@@ -73,7 +65,7 @@ def do_login(oauth_client):
     # Display the login button
     if st.button("Login with Google"):
         # Redirect the user to the authorization URL
-        st.set_query_params(**{})  # Clear any existing query params
+        st.experimental_set_query_params(**{})  # Clear any existing query params
         st.write("Authorization URL:", auth_url)
         st.write(f'<meta http-equiv="refresh" content="0; url={auth_url}">', unsafe_allow_html=True)
 
