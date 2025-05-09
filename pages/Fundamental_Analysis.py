@@ -234,14 +234,7 @@ try:
                 
                 # Display the resulting DataFrame
                 st.markdown(
-                    """
-                    <div style="background-color: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
-                        <strong>Note:</strong> Recent splits have not been taken into processing 
-                        (e.g., <code>SUN.N000</code>, <code>WATA.N000</code>).
-                    </div>
-                    """, 
-                    unsafe_allow_html=True
-                )
+                        "Recent splits have not been taken into Calculation (Ex: SUN.N000 , WATA.N000")
                 st.dataframe(df_filtered)
                 
                 
