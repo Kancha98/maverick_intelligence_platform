@@ -226,15 +226,34 @@ try:
                         selected_columns.append(column)
 
                 # Filter the DataFrame to include only selected columns
+                # --- Add Sliders for Filtering ---
+                st.subheader("Filter by Metrics")
+
+                # Add sliders for PER, PBV, and DY(%)
+                min_per, max_per = st.slider("Select PER Range", min_value=float(0), max_value=float(df_combined['PER'].max()), value=(float(df_combined['PER'].min()), float(df_combined['PER'].max())))
+                min_pbv, max_pbv = st.slider("Select PBV Range", min_value=float(0), max_value=float(df_combined['PBV'].max()), value=(float(df_combined['PBV'].min()), float(df_combined['PBV'].max())))
+                min_dy, max_dy = st.slider("Select DY(%) Range", min_value=float(0), max_value=float(df_combined['DY(%)'].max()), value=(float(df_combined['DY(%)'].min()), float(df_combined['DY(%)'].max())))
+
+                # Apply the filters to the DataFrame
+                df_combined = df_combined[
+                (df_combined['PER'] >= min_per) & (df_combined['PER'] <= max_per) &
+                (df_combined['PBV'] >= min_pbv) & (df_combined['PBV'] <= max_pbv) &
+                (df_combined['DY(%)'] >= min_dy) & (df_combined['DY(%)'] <= max_dy)
+]
                 df_filtered = df_combined[selected_columns]
+                
+                
                 
                 # Display the resulting DataFrame
                 if "DY(%)" in df_filtered.columns:
                     df_filtered = df_filtered.sort_values(by="DY(%)", ascending=False)
+                    
+                df_filtered = df_filtered.reset_index(drop=True) 
                 
                 # Display the resulting DataFrame
                 st.markdown(
                         "Recent splits have not been taken into Calculation (Ex: SUN.N000 , WATA.N000")
+                
                 st.dataframe(df_filtered)
                 
                 
