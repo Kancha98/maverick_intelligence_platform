@@ -10,7 +10,7 @@ import sys
 print(sys.path)
 print(dir(auth_utils))
 
-st.title("Welcome to the Analytics Platform")
+st.title("Welcome to the CSE Intelligence Platform by Maverick")
 
 # --- Authentication Check ---
 oauth_client = get_oauth_client()
