@@ -21,7 +21,7 @@ load_dotenv() # This will load from a .env file in the current directory or pare
 @st.cache_resource
 def init_connection():
     # This line will now directly get the secret from Streamlit Cloud's environment
-    db_url = os.environ.get("NEON_DB_URL")
+    db_url = st.secrets.get("NEON_DB_URL")
     if not db_url:
         # This error will trigger if the secret is not set in Streamlit Cloud
         st.error("Database URL not found in environment variables! Please configure Streamlit Secrets.")
