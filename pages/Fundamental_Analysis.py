@@ -195,10 +195,10 @@ try:
                 df_combined['DY(%)'] = ((df_combined['dps'] / df_combined['closing_price']) * 100).round(1)
 
                 # Calculate PER: eps_ttm / closing_price
-                df_combined['PER'] = df_combined['closing_price'] / df_combined['eps_ttm']
+                df_combined['PER'] = df_combined['closing_price'] / df_combined['eps_ttm'].round(1)
 
                 # Calculate PBV: bvps / closing_price
-                df_combined['PBV'] = df_combined['bvps'] / df_combined['closing_price']
+                df_combined['PBV'] = df_combined['bvps'] / df_combined['closing_price'].round(1)
                 
                 # Rename fields for display
                 df_combined.rename(columns={
