@@ -145,39 +145,56 @@ if st.button("Reload Financial Data"):
 
 # --- Display Data ---
 try:
+    # Load financial metrics data
     df_metrics = load_financial_metrics_data()
 
     if df_metrics.empty:
-        # The error message is already displayed by load_financial_metrics_data()
         st.info("Data could not be loaded or table is empty.")
-        # No need to st.stop() here, let the rest of the script run, but it won't display data.
     else:
-        st.subheader("Financial Metrics ")
+        st.subheader("Filtered Financial Metrics")
 
-        # Check for duplicate columns (safety check)
-        if df_metrics.columns.duplicated().any():
-            st.warning(f"Duplicate column names found: {df_metrics.columns[df_metrics.columns.duplicated()].tolist()}")
-            # Drop duplicate columns, keeping the first occurrence
-            df_metrics = df_metrics.loc[:, ~df_metrics.columns.duplicated()].copy()
+        # Filter the metrics table to include only the required columns
+        required_columns = ["code", "eps_ttm", "bvps", "dps", "cum_np", "roe", "da_ttm", "roa_ttm"]
+        df_metrics = df_metrics[required_columns]
 
-        # --- Filtering Options ---
-        # Allow filtering by code
-        
-        
-        all_codes = ["All"] + sorted(df_metrics['code'].dropna().unique().tolist())
-        selected_code = st.selectbox("Select Code", options=all_codes, index=0)  # Default to "All"
-
-        # Apply filtering based on the selected code
-        if selected_code != "All":
-            df_filtered = df_metrics[df_metrics['code'] == selected_code]
+        # --- Query stock_analysis_all_results for closing_price ---
+        conn = init_connection()
+        if conn is None:
+            st.error("Database connection failed. Cannot query stock_analysis_all_results.")
         else:
-            df_filtered = df_metrics 
-        
-        # Display the filtered DataFrame
-        if df_filtered.empty:
-            st.warning("No data matches the selected filters.")
-        else:
-            st.dataframe(df_filtered)
+            try:
+                with conn.cursor() as cur:
+                    # Query to get the latest closing_price for each symbol
+                    query = """
+                        SELECT symbol, closing_price
+                        FROM stock_analysis_all_results
+                        WHERE (symbol, date) IN (
+                            SELECT symbol, MAX(date)
+                            FROM stock_analysis_all_results
+                            GROUP BY symbol
+                        );
+                    """
+                    cur.execute(query)
+                    closing_price_data = cur.fetchall()
+                    closing_price_df = pd.DataFrame(closing_price_data, columns=["symbol", "closing_price"])
+
+                # Merge the metrics data with the closing price data
+                df_combined = pd.merge(
+                    df_metrics, closing_price_df,
+                    left_on="code", right_on="symbol", how="left"
+                )
+
+                # Drop the redundant 'symbol' column after merging
+                df_combined.drop(columns=["symbol"], inplace=True)
+
+                # Display the resulting DataFrame
+                st.dataframe(df_combined)
+
+            except Exception as e:
+                st.error(f"Error querying stock_analysis_all_results: {e}")
+
+except Exception as e:
+    st.error(f"An error occurred while processing or displaying data: {e}")
 
 
 except Exception as e:
