@@ -29,12 +29,13 @@ def get_oauth_client():
         st.error("Google Client Secret not found.")
         st.stop()
 
-    # Create OAuth2 client (do NOT pass redirect_uri here)
+    # Create OAuth2 client
     return OAuth2(
         client_id=oauth_config['client_id'],
         client_secret=client_secret,
         authorize_endpoint=oauth_config['auth_endpoint'],  # Map to authorize_endpoint
-        access_token_endpoint=oauth_config['token_endpoint'],  # Map to access_token_endpoint]
+        access_token_endpoint=oauth_config['token_endpoint'],  # Map to access_token_endpoint
+        redirect_uri=oauth_config['redirect_uri'],  # Set redirect_uri from config.yaml
     )
 
 # Initialize the OAuth client
