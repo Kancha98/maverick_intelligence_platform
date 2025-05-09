@@ -64,7 +64,7 @@ def do_login(oauth_client):
     # Display the login button
     if st.button("Login with Google"):
         # Redirect the user to the authorization URL
-        st.experimental_set_query_params(**{})  # Clear any existing query params
+        st.set_query_params(**{})  # Clear any existing query params
         st.write(f'<meta http-equiv="refresh" content="0; url={auth_url}">', unsafe_allow_html=True)
 
     # Handle the authorization response
