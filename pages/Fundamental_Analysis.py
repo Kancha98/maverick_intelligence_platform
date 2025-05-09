@@ -162,56 +162,22 @@ try:
 
         # --- Filtering Options ---
         # Allow filtering by code
-        all_codes = df_metrics['code'].unique().tolist()
-        selected_codes = st.multiselect("Select codes", 
-                                        all_codes, 
-                                        default=all_codes) # Select up to first 5 by default
+        
+        
+        all_codes = ["All"] + sorted(df_metrics['code'].dropna().unique().tolist())
+        selected_code = st.selectbox("Select Code", options=all_codes, index=0)  # Default to "All"
 
-        if selected_codes:
-            df_filtered = df_metrics[df_metrics['code'].isin(selected_codes)]
-
-            # Allow filtering by report date range if the column exists
-            if 'report_date' in df_filtered.columns and not df_filtered['report_date'].empty:
-                 min_report_date = df_filtered['report_date'].min().date() if pd.notna(df_filtered['report_date'].min()) else datetime.date(1900, 1, 1)
-                 max_report_date = df_filtered['report_date'].max().date() if pd.notna(df_filtered['report_date'].max()) else datetime.date.today()
-
-                 # Handle potential errors where min_date > max_date (e.g., all dates are NaT)
-                 if min_report_date > max_report_date:
-                     st.warning("Report date range is invalid. Cannot filter by date.")
-                     start_date = min_report_date
-                     end_date = max_report_date
-                 else:
-                     start_date, end_date = st.date_input(
-                         "Select Report Date Range",
-                         value=[min_report_date, max_report_date], # Default to the full range
-                         min_value=min_report_date,
-                         max_value=max_report_date
-                     )
-                     # Ensure start_date is before or equal to end_date
-                     if start_date > end_date:
-                         st.warning("Start date must be before or equal to end date. Adjusting end date.")
-                         end_date = start_date
-
-                     # Apply date filtering (inclusive)
-                     # Need to convert date objects from st.date_input to datetime64 for comparison
-                     df_filtered = df_filtered[
-                         (df_filtered['report_date'] >= pd.to_datetime(start_date)) &
-                         (df_filtered['report_date'] <= pd.to_datetime(end_date + datetime.timedelta(days=1), unit='s')) # +1 day to include the end date
-                     ]
-
-            if df_filtered.empty:
-                st.warning("No data matches the selected filters.")
-            else:
-                # --- Display Filtered Data ---
-                # Drop 'id' if it exists and is not needed for display
-                if 'id' in df_filtered.columns:
-                     df_filtered = df_filtered.drop(columns=['id'])
-
-                # Display the filtered DataFrame
-                st.dataframe(df_filtered)
-
+        # Apply filtering based on the selected code
+        if selected_code != "All":
+            df_filtered = df_metrics[df_metrics['code'] == selected_code]
         else:
-            st.info("Please select at least one code to display data.")
+            df_filtered = df_metrics 
+        
+        # Display the filtered DataFrame
+        if df_filtered.empty:
+            st.warning("No data matches the selected filters.")
+        else:
+            st.dataframe(df_filtered)
 
 
 except Exception as e:
