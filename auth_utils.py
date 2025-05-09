@@ -29,6 +29,15 @@ def get_oauth_client():
         st.error("Google Client Secret not found.")
         st.stop()
 
+    # Debugging: Print OAuth2 arguments
+    st.write("OAuth2 Arguments:", {
+        "client_id": oauth_config['client_id'],
+        "client_secret": client_secret,
+        "authorize_endpoint": oauth_config['auth_endpoint'],
+        "access_token_endpoint": oauth_config['token_endpoint'],
+        "redirect_uri": oauth_config['redirect_uri'],
+    })
+
     # Create OAuth2 client
     return OAuth2(
         client_id=oauth_config['client_id'],
