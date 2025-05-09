@@ -68,8 +68,8 @@ def do_login(oauth_client):
         st.write(f'<meta http-equiv="refresh" content="0; url={auth_url}">', unsafe_allow_html=True)
 
     # Handle the authorization response
-    if "code" in st.experimental_get_query_params():
-        code = st.experimental_get_query_params()["code"][0]
+    if "code" in st.query_params():
+        code = st._query_params()["code"][0]
         try:
             # Debugging: Print the token request data
             st.write("Token Request Data:", {
