@@ -3,14 +3,10 @@ import streamlit as st
 from auth_utils import get_oauth_client, do_login, do_logout, get_authenticated_user
 
 # Set the page configuration for the entire app
-st.set_page_config(page_title="Analytics Dashboard", layout="wide")
+st.set_page_config(page_title="CSE Intelligence Platform", layout="wide")
 
-import auth_utils
-import sys
-print(sys.path)
-print(dir(auth_utils))
-
-st.title("Welcome to the CSE Intelligence Platform by Maverick")
+# Welcome Title
+st.title("🌟 Welcome to the **CSE Intelligence Platform** by Maverick 🚀")
 
 # --- Authentication Check ---
 oauth_client = get_oauth_client()
@@ -18,7 +14,8 @@ user_info = get_authenticated_user()
 
 if not user_info:
     # User is not logged in, show login button
-    st.info("Please log in to access the dashboards.")
+    st.info("🔒 **Please log in to access the dashboards.**")
+    st.markdown("👤 *Your personalized analytics experience awaits!*")
     do_login(oauth_client)  # This function handles the OAuth flow and reruns
 
 else:
@@ -26,20 +23,34 @@ else:
     user_email = user_info.get('email', 'N/A')
     user_name = user_info.get('name', 'User')
 
-    # Display user info and logout button in the sidebar
-    st.sidebar.write(f"Logged in as: {user_name} ({user_email})")
-    if st.sidebar.button("Logout"):
+    # Sidebar User Info
+    st.sidebar.success(f"👋 **Welcome, {user_name}!**")
+    st.sidebar.write(f"📧 **Email:** {user_email}")
+    if st.sidebar.button("🚪 Logout"):
         do_logout()  # This function handles logout and reruns
 
-    st.header("Main Dashboard Overview")
-    st.write("Select a page from the sidebar to navigate:")
+    # Main Dashboard Content
+    st.header("📊 **Main Dashboard Overview**")
+    st.markdown(
+        """
+        Welcome to your **personalized analytics hub**! Here's what you can do:
+        - 📈 **Explore dashboards** for actionable insights.
+        - 🔔 **Stay updated** with real-time notifications.
+        - 🛠️ **Manage your account** and preferences.
+        """
+    )
 
-    # You can add any introductory content or a summary here.
-    # Streamlit automatically creates sidebar navigation based on files in the 'pages/' directory.
+    st.subheader("✨ **Your Google Account Details**")
+    st.write(f"👤 **Name:** {user_name}")
+    st.write(f"📧 **Email:** {user_email}")
 
-    st.subheader("Your Google Account Details")
-    st.write(f"**Name:** {user_name}")
-    st.write(f"**Email:** {user_email}")
-    # Add more user info display if needed
+    st.info("🌐 Use the **sidebar** on the left to navigate through the platform and unlock powerful insights!")
 
-    st.info("Use the sidebar on the left to access different sections like Dashboards, User Account, and Notifications.")
+    # Add a motivational footer
+    st.markdown(
+        """
+        ---
+        🌟 *Empowering your decisions with data-driven insights.*  
+        🚀 *Let's achieve greatness together!*
+        """
+    )

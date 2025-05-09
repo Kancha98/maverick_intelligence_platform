@@ -258,7 +258,8 @@ try:
                 df_filtered = df_filtered.style.format({
                 "PER": "{:.2f}",
                 "PBV": "{:.2f}",
-                "DY(%)": "{:.1f}"
+                "DY(%)": "{:.1f}",
+                "Latest Close Price": "{:.2f}",
                 })
                 
                 # Display the resulting DataFrame
