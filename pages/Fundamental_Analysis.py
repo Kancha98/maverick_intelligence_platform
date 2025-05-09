@@ -192,13 +192,13 @@ try:
                 df_combined['closing_price'] = df_combined['closing_price'].replace(0, pd.NA)
 
                 # Calculate DY(%): dps / closing_price * 100
-                df_combined['DY(%)'] = ((df_combined['dps'] / df_combined['closing_price']) * 100).round(1)
+                df_combined['DY(%)'] = ((df_combined['Dividend Per Share'] / df_combined['Latest Close Price']) * 100).round(1)
 
-                # Calculate PER: eps_ttm / closing_price
-                df_combined['PER'] = df_combined['closing_price'] / df_combined['eps_ttm'].round(1)
+                # Calculate PER: closing_price / eps_ttm
+                df_combined['PER'] = (df_combined['Latest Close Price'] / df_combined['EPS(TTM)']).round(2)
 
                 # Calculate PBV: bvps / closing_price
-                df_combined['PBV'] = df_combined['bvps'] / df_combined['closing_price'].round(1)
+                df_combined['PBV'] = (df_combined['Book Value Per Share'] / df_combined['Latest Close Price']).round(2)
                 
                 # Rename fields for display
                 df_combined.rename(columns={
