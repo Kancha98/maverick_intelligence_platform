@@ -254,6 +254,13 @@ try:
                     
                 df_filtered = df_filtered.reset_index(drop=True) 
                 
+                # Format the DataFrame for display
+                df_filtered = df_filtered.style.format({
+                "PER": "{:.2f}",
+                "PBV": "{:.2f}",
+                "DY(%)": "{:.1f}"
+                })
+                
                 # Display the resulting DataFrame
                 st.markdown(
                         "Recent splits have not been taken into Calculation (Ex: SUN.N000 , WATA.N000")
