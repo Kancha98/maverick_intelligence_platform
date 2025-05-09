@@ -108,7 +108,7 @@ def load_financial_metrics_data():
         # Ensure numerical columns are correctly typed (optional but good practice)
         # Identify columns that look like numbers but aren't dates
         # This part might need tuning based on your financial_metrics schema
-        numeric_cols = [col for col in df.columns if col not in ['symbol', 'company_name', 'report_date', 'last_updated'] and df[col].dtype == 'object']
+        numeric_cols = [col for col in df.columns if col not in ['code', 'company_name', 'report_date', 'last_updated'] and df[col].dtype == 'object']
         for col in numeric_cols:
              # Attempt to convert to numeric, coercing errors to NaN
              df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -161,12 +161,12 @@ try:
             df_metrics = df_metrics.loc[:, ~df_metrics.columns.duplicated()].copy()
 
         # --- Filtering Options ---
-        # Allow filtering by symbol
-        all_symbols = df_metrics['symbol'].unique().tolist()
-        selected_symbols = st.multiselect("Select Symbols", all_symbols, default=all_symbols[:min(5, len(all_symbols))]) # Select up to first 5 by default
+        # Allow filtering by code
+        all_codes = df_metrics['code'].unique().tolist()
+        selected_codes = st.multiselect("Select codes", all_codes, default=all_codes[:min(5, len(all_codes))]) # Select up to first 5 by default
 
-        if selected_symbols:
-            df_filtered = df_metrics[df_metrics['symbol'].isin(selected_symbols)]
+        if selected_codes:
+            df_filtered = df_metrics[df_metrics['code'].isin(selected_codes)]
 
             # Allow filtering by report date range if the column exists
             if 'report_date' in df_filtered.columns and not df_filtered['report_date'].empty:
@@ -209,7 +209,7 @@ try:
                 st.dataframe(df_filtered)
 
         else:
-            st.info("Please select at least one symbol to display data.")
+            st.info("Please select at least one code to display data.")
 
 
 except Exception as e:
