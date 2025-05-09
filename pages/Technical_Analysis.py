@@ -159,7 +159,7 @@ try:
     redis_available = True
 except Exception as e:
     # Display a warning if Redis is not available, but don't stop the page
-    st.warning(f"Could not connect to Redis: {e}. Notification sending will be disabled on this page.")
+
     redis_available = False
 
 # --- Helper Functions for Notifications (Copy or import from a shared utility file) ---
@@ -270,7 +270,7 @@ try:
     if not df.empty:
         # Add a date picker for filtering Maverick's Picks
         # Ensure min/max values for date picker are valid dates
-        min_date_value = df['date'].min().date() if pd.notna(df['date'].min()) else datetime.date.today() - datetime.timedelta(days=365*5) # Default to 5 years ago
+        min_date_value = df['date'].min().date() if pd.notna(df['date'].min()) else datetime.date.today() - datetime.timedelta(days=365*5)
         max_date_value = df['date'].max().date() if pd.notna(df['date'].max()) else datetime.date.today()
         # Set a default value that is within the valid range
         default_date_value = max(min_date_value, datetime.date.today() - datetime.timedelta(days=5)) # Default to last 30 days or min date
