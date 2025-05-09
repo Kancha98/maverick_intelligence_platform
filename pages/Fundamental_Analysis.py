@@ -178,6 +178,8 @@ try:
                     closing_price_data = cur.fetchall()
                     closing_price_df = pd.DataFrame(closing_price_data, columns=["symbol", "closing_price"])
 
+                closing_price_df["closing_price"] = closing_price_df["closing_price"].astype(float)
+                
                 # Merge the metrics data with the closing price data
                 df_combined = pd.merge(
                     df_metrics, closing_price_df,
