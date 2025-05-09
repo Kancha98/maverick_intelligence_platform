@@ -186,6 +186,17 @@ try:
 
                 # Drop the redundant 'symbol' column after merging
                 df_combined.drop(columns=["symbol"], inplace=True)
+                
+                df_combined['closing_price'] = df_combined['closing_price'].replace(0, pd.NA)
+
+                # Calculate DY(%): dps / closing_price * 100
+                df_combined['DY(%)'] = (df_combined['dps'] / df_combined['closing_price']) * 100
+
+                # Calculate PER: eps_ttm / closing_price
+                df_combined['PER'] = df_combined['eps_ttm'] / df_combined['closing_price']
+
+                # Calculate PBV: bvps / closing_price
+                df_combined['PBV'] = df_combined['bvps'] / df_combined['closing_price']
 
                 # Display the resulting DataFrame
                 st.dataframe(df_combined)
