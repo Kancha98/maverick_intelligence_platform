@@ -8,14 +8,6 @@ import urllib.parse as urlparse
 import plotly.express as px
 from dotenv import load_dotenv
 import datetime
-import streamlit as st
-from auth_utils import get_authenticated_user 
-from redis import Redis # Import Redis client
-from rq import Queue # Import RQ Queue
-import os
-from datetime import datetime, time
-import pytz # For timezone handling
-import time as time_module # Avoid conflict with datetime.time
 
 # --- Load environment variables ---
 # It's generally better to load environment variables once.
@@ -29,8 +21,7 @@ load_dotenv() # This will load from a .env file in the current directory or pare
 @st.cache_resource
 def init_connection():
     # This line will now directly get the secret from Streamlit Cloud's environment
-    import time as time_module # Avoid conflict with datetime.time
-    db_url = st.secrets["NEON_DB_URL"]
+    db_url = st.secrets.get("NEON_DB_URL")
     if not db_url:
         # This error will trigger if the secret is not set in Streamlit Cloud
         st.error("Database URL not found in environment variables! Please configure Streamlit Secrets.")
@@ -135,65 +126,6 @@ def load_data():
 # otherwise it can be removed or moved inside a function that uses it)
 # tv = TvDatafeed()
 
-# --- Authentication Check ---
-# This check is crucial for every page that requires authentication.
-user_info = get_authenticated_user()
-if not user_info:
-    # If user is not logged in, show a warning and stop execution of this page
-    st.warning("Please log in to view this page.")
-    st.stop() # This stops the script execution for this specific page
-
-# User is logged in, get their email for notification logic
-user_email = user_info.get('email', 'N/A')
-
-# --- Redis and RQ Setup (Consistent across app files that interact with Redis) ---
-# This setup is needed here to enqueue tasks and check/set the daily sent flag.
-REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
-REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
-REDIS_DB = int(os.environ.get('REDIS_DB', 0))
-
-try:
-    redis_conn_app = Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
-    redis_conn_app.ping() # Check connection
-    q_app = Queue(connection=redis_conn_app) # Queue for enqueuing tasks
-    redis_available = True
-except Exception as e:
-    # Display a warning if Redis is not available, but don't stop the page
-
-    redis_available = False
-
-# --- Helper Functions for Notifications (Copy or import from a shared utility file) ---
-# It's highly recommended to put these into a separate utility file (e.g., notification_utils.py)
-# if used across multiple pages. For simplicity here, they are included.
-def get_seconds_until_midnight():
-    """Calculates seconds until midnight in the local timezone."""
-    # Use a specific timezone if your server isn't in the desired timezone
-    local_tz = pytz.determine_timezones(False)[0] if pytz.determine_timezones(False) else pytz.utc
-    now = datetime.now(local_tz)
-    midnight = datetime.combine(now.date() + datetime.timedelta(days=1), time(0, 0, 0), tzinfo=local_tz)
-    seconds_until_midnight = (midnight - now).total_seconds()
-    return int(seconds_until_midnight)
-
-def has_notification_been_sent_today(user_email):
-    """Checks Redis if a notification has been sent for this user today."""
-    if not redis_available:
-        return False # Cannot check if Redis is not available
-
-    today_str = datetime.now().strftime('%Y-%m-%d')
-    redis_key = f"notification_sent:{user_email}:{today_str}"
-    return redis_conn_app.exists(redis_key)
-
-def set_notification_sent_today(user_email):
-    """Sets a flag in Redis indicating notification sent for this user today."""
-    if not redis_available:
-        return
-
-    today_str = datetime.now().strftime('%Y-%m-%d')
-    redis_key = f"notification_sent:{user_email}:{today_str}"
-    seconds_until_midnight = get_seconds_until_midnight()
-    # Set the key with a TTL (Time To Live) until midnight
-    redis_conn_app.setex(redis_key, seconds_until_midnight, 1) # Store '1' as a placeholder value
-
 
 def get_mavericks_picks(results_df):
     """Filters stocks for Mavericks Picks based on Tier 1, Tier 2, and Tier 3 conditions."""
@@ -270,15 +202,11 @@ try:
     if not df.empty:
         # Add a date picker for filtering Maverick's Picks
         # Ensure min/max values for date picker are valid dates
-        min_date_value = df['date'].min().date() if pd.notna(df['date'].min()) else datetime.date.today() - datetime.timedelta(days=365*5)
+        min_date_value = df['date'].min().date() if pd.notna(df['date'].min()) else datetime.date.today() - datetime.timedelta(days=365*5) # Default to 5 years ago
         max_date_value = df['date'].max().date() if pd.notna(df['date'].max()) else datetime.date.today()
         # Set a default value that is within the valid range
-        default_date_value = max(min_date_value, datetime.date.today() - datetime.timedelta(days=5))# Default to last 30 days or min date
-        st.write("min_date_value:", min_date_value)
-        st.write("max_date_value:", max_date_value)
-        st.write("default_date_value:", default_date_value)
-        
-        
+        default_date_value = max(min_date_value, datetime.date.today() - datetime.timedelta(days=5)) # Default to last 30 days or min date
+
         selected_maverick_date = st.date_input(
             "Select Start Date for Filtering Stocks",
             value=default_date_value,
@@ -674,45 +602,6 @@ try:
     else:
         st.info("No results match the selected filters.")
 
-    # --- Notification Logic (Triggered from this page if it generates picks) ---
-# This section handles the button to send the email notification via the RQ worker.
-    st.subheader("Daily Picks Notification")
-
-    if redis_available:
-    # Check if a notification has already been sent for this user today
-        if has_notification_been_sent_today(user_email):
-            st.info("You have already received your picks notification for today.")
-        else:
-            # If no notification sent today, display the send button
-            if st.button("Send My Picks via Email"):
-                try:
-                # Enqueue the email sending task to RQ
-                # The string 'tasks.send_picks_email' refers to the send_picks_email function
-                # within the tasks.py file that the RQ worker will execute.
-                    q_app.enqueue(
-                        'tasks.send_picks_email', # Function path in tasks.py
-                        user_email, # Argument 1: recipient email
-
-                    )
-                # Set the flag in Redis to indicate that the notification has been sent today
-                    set_notification_sent_today(user_email)
-                    st.success("Your picks have been queued for email delivery!")
-                    st.info("Please ensure your RQ worker is running to send the email.")
-                    # Rerun the app to update the UI and show the "already sent" message
-                    st.rerun()
-                except Exception as e:
-                # Display an error if enqueuing the task fails (e.g., Redis connection issue)
-                    st.error(f"Failed to queue email task: {e}")
-    # Optional: Add a button to manually clear the daily sent flag for testing (use with caution)
-    # if st.button("Clear Daily Sent Flag (For Testing)"):
-    #    today_str = datetime.now().strftime('%Y-%m-%d')
-    #    redis_key = f"notification_sent:{user_email}:{today_str}"
-    #    redis_conn_app.delete(redis_key)
-    #    st.warning("Daily sent flag cleared in Redis.")
-    #    st.rerun()
-
-    else:
-        st.warning("Email notifications are disabled Currently.")
 
     # === Legend Section ===
     st.markdown("## 📘 Legend: Understanding Key Terms")
