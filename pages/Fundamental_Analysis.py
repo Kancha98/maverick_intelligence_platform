@@ -35,7 +35,7 @@ def init_connection():
             port=url.port or "5432", # Default to 5432 if port is not specified
             sslmode="require", # Ensure SSL is used for Neon
         )
-        st.success("Database connection established.")
+        #st.success("Database connection established.")
         return conn
     except Exception as e:
         st.error(f"Failed to connect to database: {e}")
@@ -231,8 +231,17 @@ try:
                 # Display the resulting DataFrame
                 if "DY(%)" in df_filtered.columns:
                     df_filtered = df_filtered.sort_values(by="DY(%)", ascending=False)
-
+                
                 # Display the resulting DataFrame
+                st.markdown(
+                    """
+                    <div style="background-color: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+                        <strong>Note:</strong> Recent splits have not been taken into processing 
+                        (e.g., <code>SUN.N000</code>, <code>WATA.N000</code>).
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
                 st.dataframe(df_filtered)
                 
                 
