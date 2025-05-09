@@ -59,7 +59,7 @@ def do_login(oauth_client):
     user_info_endpoint = oauth_config['user_info_endpoint']  # Retrieve user_info_endpoint
 
     # Construct the authorization URL
-    redirect_uri = oauth_client.redirect_uri
+    redirect_uri=oauth_config['redirect_uri']  # Set redirect_uri from config.yaml
     auth_url = f"{oauth_client.authorize_endpoint}?response_type=code&client_id={oauth_client.client_id}&redirect_uri={redirect_uri}&scope={scope}"
     
     
