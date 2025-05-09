@@ -8,6 +8,7 @@ import urllib.parse as urlparse
 import plotly.express as px
 from dotenv import load_dotenv
 import datetime
+from auth_utils import get_authenticated_user 
 
 # --- Load environment variables ---
 # It's generally better to load environment variables once.
@@ -40,7 +41,17 @@ def init_connection():
     except Exception as e:
         st.error(f"Failed to connect to database: {e}")
         return None
+    
+# --- Authentication Check ---
+# This check is crucial for every page that requires authentication.
+user_info = get_authenticated_user()
+if not user_info:
+    # If user is not logged in, show a warning and stop execution of this page
+    st.warning("Please log in to view this page.")
+    st.stop() # This stops the script execution for this specific page
 
+# User is logged in, get their email for notification logic
+user_email = user_info.get('email', 'N/A')
 
 # --- Load Data ---
 # Use `st.cache_data` for the dataframe result.
