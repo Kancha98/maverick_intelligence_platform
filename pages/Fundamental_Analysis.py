@@ -152,7 +152,7 @@ try:
         st.info("Data could not be loaded or table is empty.")
         # No need to st.stop() here, let the rest of the script run, but it won't display data.
     else:
-        st.subheader("Loaded Financial Metrics Data")
+        st.subheader("Financial Metrics ")
 
         # Check for duplicate columns (safety check)
         if df_metrics.columns.duplicated().any():
@@ -163,7 +163,9 @@ try:
         # --- Filtering Options ---
         # Allow filtering by code
         all_codes = df_metrics['code'].unique().tolist()
-        selected_codes = st.multiselect("Select codes", all_codes, default=all_codes[:min(5, len(all_codes))]) # Select up to first 5 by default
+        selected_codes = st.multiselect("Select codes", 
+                                        all_codes, 
+                                        default=all_codes) # Select up to first 5 by default
 
         if selected_codes:
             df_filtered = df_metrics[df_metrics['code'].isin(selected_codes)]
