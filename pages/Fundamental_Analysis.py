@@ -227,6 +227,10 @@ try:
 
                 # Filter the DataFrame to include only selected columns
                 # --- Add Sliders for Filtering ---
+                df_combined['PER'] = df_combined['PER'].replace([float('inf'), float('-inf')], pd.NA).dropna()
+                df_combined['PBV'] = df_combined['PBV'].replace([float('inf'), float('-inf')], pd.NA).dropna()
+                df_combined['DY(%)'] = df_combined['DY(%)'].replace([float('inf'), float('-inf')], pd.NA).dropna()
+                
                 st.subheader("Filter by Metrics")
 
                 # Add sliders for PER, PBV, and DY(%)
