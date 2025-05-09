@@ -199,6 +199,17 @@ try:
 
                 # Calculate PBV: bvps / closing_price
                 df_combined['PBV'] = df_combined['bvps'] / df_combined['closing_price']
+                
+                # Rename fields for display
+                df_combined.rename(columns={
+                    "eps_ttm": "EPS(TTM)",
+                    "bvps": "Book Value Per Share",
+                    "dps": "Dividend Per Share",
+                    "cum_np": "Cumulative Net Profit",
+                    "roe": "Return on Equity",
+                    "roa_ttm": "Return on Assets",
+                    "closing_price": "Latest Close Price"
+                }, inplace=True)
 
                 # Display the resulting DataFrame
                 st.dataframe(df_combined)
