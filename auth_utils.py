@@ -67,7 +67,8 @@ def do_login(oauth_client):
         # Redirect the user to the authorization URL
         st.experimental_set_query_params(**{})  # Clear any existing query params
         st.write("Authorization URL:", auth_url)
-        st.write(f'<meta http-equiv="refresh" content="0; url={auth_url}">', unsafe_allow_html=True)
+        # Provide a clickable link to the Google login page
+        st.markdown(f"[Click here to log in with Google]({auth_url})")
 
     # Handle the authorization response
     if "code" in st.query_params:
