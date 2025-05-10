@@ -285,7 +285,7 @@ try:
             tier_2_picks_final  = tier_2_picks_processed.rename(columns=column_rename_map_filtered)
 
             # Display the dataframe with renamed columns
-            st.dataframe(tier_2_picks_processed, use_container_width=True)
+            st.dataframe(tier_2_picks_final, use_container_width=True)
         else:
             st.info("No stocks meet Tier 2 conditions.")
             
