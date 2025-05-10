@@ -251,8 +251,6 @@ try:
             'ema_50',
             'ema_100',
             'ema_200',
-            'vol_avg_5d',
-            'vol_avg_20d'
             ]
             
             # Use .copy() to avoid SettingWithCopyWarning if tier_2_picks is a slice
