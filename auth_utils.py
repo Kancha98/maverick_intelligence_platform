@@ -31,8 +31,8 @@ def get_oauth_client():
 
     # Create OAuth2 client
     return OAuth2(
-        #client_id=oauth_config['client_id'],
-        #client_secret=client_secret,
+        client_id=oauth_config['client_id'],
+        client_secret=client_secret,
         authorize_endpoint=oauth_config['auth_endpoint'],  # Map to authorize_endpoint
         access_token_endpoint=oauth_config['token_endpoint'],  # Map to access_token_endpoint
     )
@@ -74,11 +74,10 @@ def do_login(oauth_client):
         code = st.query_params["code"][0]
         try:
             # Debugging: Print the token request data
-            st.write(f"DEBUG: Value of 'code' extracted from query params: {code}")
             st.write("Token Request Data:", {
                 "code": code,
-                "client_id": oauth_client.client_id,
-                "client_secret": oauth_client.client_secret,
+                #"client_id": oauth_client.client_id,
+                #"client_secret": oauth_client.client_secret,
                 "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
             })
