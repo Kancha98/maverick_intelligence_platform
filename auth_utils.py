@@ -65,20 +65,19 @@ def do_login(oauth_client):
     # Display the login button
     if st.button("Login with Google"):
         # Redirect the user to the authorization URL
-        st.query_params.clear() # Clear any existing query params
+        st.experimental_set_query_params(**{})  # Clear any existing query params
         # Provide a clickable link to the Google login page
         st.markdown(f"[Click here to log in with Google]({auth_url})")
 
     # Handle the authorization response
-    if "code" in st.query_params:
-        code = st.query_params["code"][0]
+    if "code" in st.experimental_get_query_params():
+        code = st.experimental_get_query_params()["code"][0]
         try:
             # Debugging: Print the token request data
-            st.write(f"DEBUG: Value of 'code' extracted from query params: {code}")
             st.write("Token Request Data:", {
                 "code": code,
-                #"client_id": oauth_client.client_id,
-                #"client_secret": oauth_client.client_secret,
+                "client_id": oauth_client.client_id,
+                "client_secret": oauth_client.client_secret,
                 "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
             })
