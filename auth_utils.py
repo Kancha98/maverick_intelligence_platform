@@ -65,7 +65,7 @@ def do_login(oauth_client):
     # Display the login button
     if st.button("Login with Google"):
         # Redirect the user to the authorization URL
-        st.query_params.clear()  # Clear any existing query params
+        st.experimental_set_query_params(**{})  # Clear any existing query params
         # Provide a clickable link to the Google login page
         st.markdown(f"[Click here to log in with Google]({auth_url})")
 
