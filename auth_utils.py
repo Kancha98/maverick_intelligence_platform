@@ -46,77 +46,134 @@ def do_login(oauth_client):
     Handles the login process using Google OAuth.
     Returns user info if logged in.
     """
+    # 1. Check if user is already logged in via session state
     if 'user_info' in st.session_state and st.session_state.get('logged_in', False):
         return st.session_state['user_info']
 
-    # Retrieve scope and user_info_endpoint from the configuration
+    # 2. Load configuration needed for login flow (scopes, redirect_uri, user_info_endpoint)
+    # Read config inside the function if it's needed here and not fully loaded globally
     CONFIG_FILE = 'config.yaml'
-    with open(CONFIG_FILE, 'r') as f:
-        config = yaml.safe_load(f)
-    oauth_config = config.get('oauth')
-    scope = oauth_config['scope']
-    user_info_endpoint = oauth_config['user_info_endpoint']  # Retrieve user_info_endpoint
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config = yaml.safe_load(f)
+        oauth_config = config.get('oauth')
+        if not oauth_config:
+             st.error("OAuth configuration not found under the 'oauth' key during login.")
+             return None # Stop login process
+        scope = oauth_config.get('scope')
+        redirect_uri = oauth_config.get('redirect_uri')
+        user_info_endpoint = oauth_config.get('user_info_endpoint')
 
-    # Construct the authorization URL
-    redirect_uri=oauth_config['redirect_uri']  # Set redirect_uri from config.yaml
-    auth_url = f"{oauth_client.authorize_endpoint}?response_type=code&client_id={oauth_client.client_id}&redirect_uri={redirect_uri}&scope={scope}"
-    
-    
-    # Display the login button
-    if st.button("Login with Google"):
-        # Redirect the user to the authorization URL
-        st.experimental_set_query_params(**{})  # Clear any existing query params
-        # Provide a clickable link to the Google login page
-        st.markdown(f"[Click here to log in with Google]({auth_url})")
+        if not all([scope, redirect_uri, user_info_endpoint]):
+             st.error("Missing required OAuth configuration details (scope, redirect_uri, or user_info_endpoint) in config.yaml.")
+             return None # Stop login process
 
-    # Handle the authorization response
-    if "code" in st.experimental_get_query_params():
-        code = st.experimental_get_query_params()["code"][0]
-        try:
-            # Debugging: Print the token request data
-            st.write("Token Request Data:", {
-                "code": code,
-                #"client_id": oauth_client.client_id,
-                #"client_secret": oauth_client.client_secret,
-                "redirect_uri": redirect_uri,
-                "grant_type": "authorization_code",
-            })
+    except FileNotFoundError:
+        st.error(f"Configuration file '{CONFIG_FILE}' not found during login.")
+        return None # Stop login process
+    except Exception as e:
+         st.error(f"Error loading configuration during login: {e}")
+         return None # Stop login process
 
-            # Exchange the authorization code for an access token
-            token_response = requests.post(
-                oauth_client.access_token_endpoint,
-                data={
+
+    # 3. Construct the authorization URL
+    # Using the endpoints/client_id from the initialized oauth_client object
+    auth_url = (
+        f"{oauth_client.authorize_endpoint}?"
+        f"response_type=code&"
+        f"client_id={oauth_client.client_id}&"
+        f"redirect_uri={redirect_uri}&"
+        f"scope={scope}"
+    )
+
+    # 4. Display the login button using st.link_button
+    # This button directly navigates the user to the auth_url
+    st.info("Please log in to access the dashboards.") # Moved info message here
+    st.link_button("Login with Google", url=auth_url)
+    # You can optionally add a small instruction text
+    # st.write("Click the button above to log in with your Google account.")
+
+
+    # 5. Handle the authorization response AFTER the redirect from Google
+    # This block executes on a rerun when the 'code' query parameter is present
+    if "code" in st.query_params:
+        # Add a check to ensure st.query_params["code"] is a list and not empty
+        code_list = st.query_params.get("code")
+        if code_list and isinstance(code_list, list) and len(code_list) > 0:
+            code = code_list[0]
+
+            try:
+                # Debugging: Print the token request data (exclude client_secret!)
+                st.write("DEBUG: Token Request Data:", {
                     "code": code,
                     "client_id": oauth_client.client_id,
-                    "client_secret": oauth_client.client_secret,
+                    # "client_secret": oauth_client.client_secret, # DO NOT PRINT IN PRODUCTION!
                     "redirect_uri": redirect_uri,
                     "grant_type": "authorization_code",
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-            token_response.raise_for_status()
-            token = token_response.json().get("access_token")
+                })
+                st.write(f"DEBUG: Extracted code: {code}") # Debug print from previous step
 
-            if not token:
-                st.error("Failed to retrieve access token.")
-                return None
+                # Exchange the authorization code for an access token
+                token_response = requests.post(
+                    oauth_client.access_token_endpoint,
+                    data={
+                        "code": code,
+                        "client_id": oauth_client.client_id,
+                        "client_secret": oauth_client.client_secret, # Use secret here
+                        "redirect_uri": redirect_uri,
+                        "grant_type": "authorization_code",
+                    },
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
+                token_response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+                token_data = token_response.json()
+                access_token = token_data.get("access_token")
+                # Optionally store refresh_token if needed for long-lived sessions
+                # refresh_token = token_data.get("refresh_token")
 
-            # Fetch user info
-            user_info_response = requests.get(
-                user_info_endpoint,  # Use the endpoint from config.yaml
-                headers={"Authorization": f"Bearer {token}"}
-            )
-            user_info_response.raise_for_status()
-            user_info = user_info_response.json()
+                if not access_token:
+                    st.error("Failed to retrieve access token from token exchange.")
+                    st.write("DEBUG: Token response:", token_data) # Print response for debugging
+                    return None
 
-            # Store user info in session state
-            st.session_state['user_info'] = user_info
-            st.session_state['logged_in'] = True
-            st.rerun()
-            return user_info
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
-    return None
+                # Fetch user info using the access token
+                user_info_response = requests.get(
+                    user_info_endpoint,
+                    headers={"Authorization": f"Bearer {access_token}"}
+                )
+                user_info_response.raise_for_status() # Raise HTTPError for bad responses
+                user_info = user_info_response.json()
+
+                # Store user info and login status in session state
+                st.session_state['user_info'] = user_info
+                st.session_state['logged_in'] = True
+                st.success("Successfully authenticated!") # Show success message
+
+                # --- Clear query parameters AFTER successful login ---
+                # This removes the 'code' from the URL after it's used
+                st.query_params.clear()
+                # -------------------------------------------------
+
+                # Rerun the app to transition to the logged-in state UI
+                st.rerun()
+                return user_info
+
+            except requests.exceptions.HTTPError as e:
+                st.error(f"HTTP Error during token exchange or user info fetch: {e}")
+                # Specific error handling for 400 Bad Request from token endpoint
+                if e.response.status_code == 400:
+                     st.error("Token exchange failed. This often means the authorization code was invalid, expired, or the redirect_uri/credentials do not match.")
+                     st.write("DEBUG: Response body:", e.response.text) # Print response body for more details
+
+            except Exception as e:
+                st.error(f"An unexpected error occurred during the login process: {e}")
+
+        else:
+            # 'code' param was in query_params but was empty or not a list
+            st.error("Invalid 'code' parameter received in the redirect URL.")
+            st.write("DEBUG: st.query_params['code'] value:", code_list)
+
+    return None # Return None if not logged in and no code to process
 
 def do_logout():
     """
