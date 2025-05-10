@@ -265,6 +265,11 @@ try:
                 
                 st.dataframe(df_filtered)
                 
+                st.markdown("""
+---
+🙏 If you find this information helpful and want to support my work, please consider [supporting me on Patreon ](https://www.patreon.com/c/CSEMaverick) 💚
+""")
+                
                 
 
             except Exception as e:
