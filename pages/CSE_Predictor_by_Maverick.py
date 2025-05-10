@@ -292,7 +292,7 @@ try:
     # === Chart Section ===
     if not filtered_df.empty:
         st.markdown("### 📊 Closing Price Trend")
-        selected_chart_symbol = st.selectbox( filtered_df['Symbol'].unique())
+        selected_chart_symbol = st.selectbox("Select a Symbol for Chart", filtered_df['Symbol'].unique())
         chart_df = filtered_df[filtered_df['Symbol'] == selected_chart_symbol]
         
         # Ensure data is sorted by Date
