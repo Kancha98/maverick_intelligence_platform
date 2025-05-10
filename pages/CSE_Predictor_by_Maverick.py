@@ -283,7 +283,7 @@ try:
             # Display the dataframe with renamed columns
             st.dataframe(tier_2_picks_final, use_container_width=True)
             
-            st.markdown("📊 **Interpreting Mention Frequency:**")
+            st.markdown("### 📊 **Interpreting Mention Frequency:**")
             
             
             st.markdown("Stocks appearing **2-3 times** in this list could signal the early phase of a bullish trend, potentially offering more room for capital gains.")
@@ -295,7 +295,7 @@ try:
 
             if not recurring_stocks_1.empty:
                 st.markdown("### 🌱 Stocks in Early Bullish Phase (📈 2–3 Mentions)")
-                early_html = "<ul style='font-size:16px;color:#0b5394'>"
+                early_html = "<ul style='font-size:16px;color:#66bb6a'>"
                 for stock, count in recurring_stocks_1.items():
                     early_html += f"<li><b>{stock}</b>: {count} times</li>"
                 early_html += "</ul>"
@@ -310,7 +310,7 @@ try:
 
             if not recurring_stocks_2.empty:
                 st.markdown("### 🔥 Stocks in Strong Bullish Phase (💥 5+ Mentions)")
-                vibrant_html = "<ul style='font-size:16px;color:#b10000'>"
+                vibrant_html = "<ul style='font-size:16px;color:#2e7d32'>"
                 for stock, count in recurring_stocks_2.items():
                     vibrant_html += f"<li><b>{stock}</b>: {count} times</li>"
                 vibrant_html += "</ul>"
