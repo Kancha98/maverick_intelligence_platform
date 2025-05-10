@@ -69,6 +69,7 @@ def do_login(oauth_client):
     # Handle the authorization response
     if "code" in st.query_params:
         code = st.query_params["code"][0]
+        st.write(f"Extracted code: {code}") # <--- Add this line
         try:
             # Debugging: Print the token request data
             st.write("Token Request Data:", {
