@@ -252,7 +252,7 @@ try:
             'ema_100',
             'ema_200',
             'last_updated',
-            'Date',
+            'date',
             'prev_close',
             ]
             
@@ -269,7 +269,6 @@ try:
             tier_2_picks_processed = tier_2_picks_processed.reset_index(drop=True)  # Remove index
             
             column_rename_map_filtered = {
-                 'date': 'Date',
                  'symbol': 'Symbol',
                  'closing_price': "Today Closing Price",
                  'change_pct': '% Change',
