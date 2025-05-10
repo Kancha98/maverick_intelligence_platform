@@ -288,11 +288,22 @@ try:
             st.markdown("Conversely, stocks with **5 or more mentions** might be further into their uptrend, where significant appreciation may have already occurred.")
             if not tier_2_picks_final.empty:
                 recurring_stocks_1 = tier_2_picks_final['Symbol'].value_counts()
-                recurring_stocks_1 = recurring_stocks_1[recurring_stocks_1 >= 3]
+                recurring_stocks_1 = recurring_stocks_1[recurring_stocks_1 >= 2 & recurring_stocks_1 <= 3]
 
             if not recurring_stocks_1.empty:
-                st.markdown("List of Stocks with Repeated Bullish Volume Signatures:")
+                st.markdown("List of Stocks with Early Bullish Volume Signatures:")
                 for stock, count in recurring_stocks_1.items():
+                    st.markdown(f"- **{stock}**: {count} times")
+            else:
+                 st.info("")
+                 
+            if not tier_2_picks_final.empty:
+                recurring_stocks_2 = tier_2_picks_final['Symbol'].value_counts()
+                recurring_stocks_2 = recurring_stocks_2[recurring_stocks_1 >= 5]
+
+            if not recurring_stocks_2.empty:
+                st.markdown("List of Stocks with Vibrant Bullish Volume Signatures:")
+                for stock, count in recurring_stocks_2.items():
                     st.markdown(f"- **{stock}**: {count} times")
             else:
                  st.info("")
