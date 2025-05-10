@@ -287,7 +287,7 @@ try:
                     # Find recurring stocks based on the full tier 1 picks DataFrame
             if not tier_2_picks_final.empty:
                 recurring_stocks_1 = tier_2_picks_final['Symbol'].value_counts()
-                recurring_stocks_1 = recurring_stocks_1[recurring_stocks_1 >= 4]
+                recurring_stocks_1 = recurring_stocks_1[recurring_stocks_1 >= 3]
 
             if not recurring_stocks_1.empty:
                 st.markdown("List of Stocks with Repeated Bullish Volume Signatures:")
