@@ -97,11 +97,17 @@ def do_login(oauth_client):
     # 5. Handle the authorization response AFTER the redirect from Google
     # This block executes on a rerun when the 'code' query parameter is present
     if "code" in st.query_params:
-        # Add a check to ensure st.query_params["code"] is a list and not empty
-        code_list = st.query_params.get("code")
-        if code_list and isinstance(code_list, list) and len(code_list) > 0:
-            code = code_list[0]
+        
+        code_value = st.query_params.get("code") # Get the value associated with 'code'
 
+        # Check if the value is a list (standard behavior) or a string (observed behavior)
+        if code_value is not None:
+            if isinstance(code_value, list) and len(code_value) > 0:
+                code = code_value[0] # Get the first item if it's a non-empty list
+            elif isinstance(code_value, str) and len(code_value) > 0:
+                 code = code_value # Use the string directly if it's a non-empty string
+                 
+        if code:
             try:
                 # Debugging: Print the token request data (exclude client_secret!)
                 st.write("DEBUG: Token Request Data:", {
@@ -171,7 +177,7 @@ def do_login(oauth_client):
         else:
             # 'code' param was in query_params but was empty or not a list
             st.error("Invalid 'code' parameter received in the redirect URL.")
-            st.write("DEBUG: st.query_params['code'] value:", code_list)
+            st.write("DEBUG: st.query_params['code'] value:", code_value)
 
     return None # Return None if not logged in and no code to process
 
@@ -194,7 +200,6 @@ def get_authenticated_user():
 user_info = get_authenticated_user()
 
 if not user_info:
-    st.info("Please log in to access the dashboards.")
     do_login(oauth_client)
 else:
     user_email = user_info.get('email', 'N/A')
