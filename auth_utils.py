@@ -77,8 +77,8 @@ def do_login(oauth_client):
             st.write(f"DEBUG: Value of 'code' extracted from query params: {code}")
             st.write("Token Request Data:", {
                 "code": code,
-                #"client_id": oauth_client.client_id,
-                #"client_secret": oauth_client.client_secret,
+                "client_id": oauth_client.client_id,
+                "client_secret": oauth_client.client_secret,
                 "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
             })
