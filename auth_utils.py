@@ -65,13 +65,13 @@ def do_login(oauth_client):
     # Display the login button
     if st.button("Login with Google"):
         # Redirect the user to the authorization URL
-        st.st.query_params(**{})  # Clear any existing query params
+        st.query_params.clear() # Clear any existing query params
         # Provide a clickable link to the Google login page
         st.markdown(f"[Click here to log in with Google]({auth_url})")
 
     # Handle the authorization response
-    if "code" in st.query_params():
-        code = st.query_params()["code"][0]
+    if "code" in st.query_params:
+        code = st.query_params["code"][0]
         try:
             # Debugging: Print the token request data
             st.write("Token Request Data:", {
