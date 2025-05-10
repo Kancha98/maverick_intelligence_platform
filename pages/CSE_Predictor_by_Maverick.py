@@ -258,14 +258,14 @@ try:
             
             # Use .copy() to avoid SettingWithCopyWarning if tier_2_picks is a slice
             tier_2_picks_processed = tier_2_picks.copy()
+            tier_2_picks_processed = tier_2_picks_processed.reset_index(drop=True) 
             
-            # This step is important even if it looks like datetime, to be safe.
-            tier_2_picks_processed['date'] = pd.to_datetime(tier_2_picks_processed['date'])
 
             # Now format the datetime objects into strings with only the date part
-            tier_2_picks_processed['date'] = tier_2_picks_processed['date'].dt.strftime('%Y-%m-%d')
+            tier_2_picks_processed['date'] = pd.to_datetime(tier_2_picks_processed['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+
             
-            tier_2_picks_processed = tier_2_picks_processed.reset_index(drop=True)  # Remove index
+             # Remove index
             
             column_rename_map_filtered = {
                  'date': 'Date',
