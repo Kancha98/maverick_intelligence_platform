@@ -70,8 +70,8 @@ def do_login(oauth_client):
         st.markdown(f"[Click here to log in with Google]({auth_url})")
 
     # Handle the authorization response
-    if "code" in st.experimental_get_query_params():
-        code = st.experimental_get_query_params()["code"][0]
+    if "code" in st.query_params():
+        code = st.query_params()["code"][0]
         try:
             # Debugging: Print the token request data
             st.write("Token Request Data:", {
