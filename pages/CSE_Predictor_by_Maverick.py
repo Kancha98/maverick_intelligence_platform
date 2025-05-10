@@ -237,13 +237,58 @@ try:
             
             st.markdown("These stocks show moderate upside potential compared to the broader market. While not as strong as Tier 1 picks, they still present relatively favorable opportunities._")
             st.markdown("Pay attention to the stocks that have recurring mentions in the list, they have much better chances!")
-            st.dataframe(tier_2_picks, use_container_width=True)
+                         # Rename columns for display
+            
+            # Define the list of columns to drop
+            columns_to_drop = [
+            'ema_20',
+            'ema_50',
+            'ema_100',
+            'ema_200',
+            'vol_avg_5d',
+            'vol_avg_20d'
+            ]
+            
+            # Use .copy() to avoid SettingWithCopyWarning if tier_2_picks is a slice
+            tier_2_picks_processed = tier_2_picks.drop(columns=columns_to_drop).copy()
+            
+            # This step is important even if it looks like datetime, to be safe.
+            tier_2_picks_processed['date'] = pd.to_datetime(tier_2_picks_processed['date'])
+
+            # Now format the datetime objects into strings with only the date part
+            tier_2_picks_processed['date'] = tier_2_picks_processed['date'].dt.strftime('%Y-%m-%d')
+            
+            column_rename_map_filtered = {
+                 'date': 'Date',
+                 'symbol': 'Symbol',
+                 'closing_price': "Today Closing Price",
+                 'change_pct': '% Change',
+                 'turnover': 'Turnover',
+                 'volume': 'Volume',
+                 'volume_analysis': 'Volume Analysis',
+                 'rsi': 'RSI',
+                 'rsi_divergence': 'RSI Divergence',
+                 'relative_strength': 'Relative Strength',
+                 'ema_20': 'EMA 20',
+                 'ema_50': 'EMA 50',
+                 'ema_100': 'EMA 100',
+                 'ema_200': 'EMA 200',
+                 'vol_avg_5d': 'Vol Avg 5D',
+                 'vol_avg_20d': 'Vol Avg 20D'
+             }
+            
+            
+            tier_2_picks_final  = tier_2_picks_processed.rename(columns=column_rename_map_filtered)
+
+            # Display the dataframe with renamed columns
+            st.dataframe(tier_2_picks_final, use_container_width=True)
         else:
             st.info("No stocks meet Tier 2 conditions.")
             
     # === Chart Section ===
     if not filtered_df.empty:
-        selected_chart_symbol = st.selectbox("📊 View Chart for Symbol", filtered_df['Symbol'].unique())
+        st.markdown("### 📊 Closing Price Trend")
+        selected_chart_symbol = st.selectbox( filtered_df['Symbol'].unique())
         chart_df = filtered_df[filtered_df['Symbol'] == selected_chart_symbol]
         
         # Ensure data is sorted by Date

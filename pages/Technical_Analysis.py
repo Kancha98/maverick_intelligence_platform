@@ -178,7 +178,7 @@ def get_mavericks_picks(results_df):
     return tier_1_picks, tier_2_picks, tier_3_picks
 
 # --- Streamlit App ---
-st.title("📈 CSE Gem Finder by CSE Maverick")
+st.title("🧭 AI Market Technical Navigator")
 st.markdown("💡An intelligent assistant to help you discover high-potential stocks by leveraging technical analysis tools!!")
 st.markdown("Let's find Gems!")
 st.markdown("")
@@ -612,6 +612,31 @@ try:
              st.dataframe(filtered_df_show, use_container_width=True)
     else:
         st.info("No results match the selected filters.")
+        
+        # === Chart Section ===
+    if not filtered_df.empty:
+        selected_chart_symbol = st.selectbox("📊 View Chart for Symbol", filtered_df['Symbol'].unique())
+        chart_df = filtered_df[filtered_df['Symbol'] == selected_chart_symbol]
+        
+        # Ensure data is sorted by Date
+        chart_df = chart_df.sort_values(by='Date')
+        
+        fig = px.line(chart_df, 
+                      x='Date', 
+                      y='Closing Price', 
+                      title=f"📈 Closing Price Trend for {selected_chart_symbol}",
+                      markers=True)
+        
+        fig.update_traces(line=dict(shape='linear'))  # Ensure smooth lines
+        fig.update_layout(
+            xaxis_title="Date",
+            yaxis_title="Closing Price",
+            template="plotly_dark"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+    else:
+        st.info("No data matches the selected filters.")
 
 
     # === Legend Section ===
