@@ -261,7 +261,7 @@ try:
             
 
             # Now format the datetime objects into strings with only the date part
-            tier_2_picks_processed['Dte'] = tier_2_picks_processed['Date'].dt.strftime('%Y-%m-%d')
+            tier_2_picks_processed['Date'] = pd.to_datetime(tier_2_picks_processed['Date'], errors='coerce').dt.strftime('%Y-%m-%d')
             
             tier_2_picks_processed = tier_2_picks.drop(columns=columns_to_drop).copy()
             tier_2_picks_processed = tier_2_picks_processed.reset_index(drop=True)  # Remove index
