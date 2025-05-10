@@ -66,10 +66,8 @@ st.markdown("""
 st.markdown("---") # Add a separator line for visual clarity
 st.markdown("⚠️ **IMPORTANT DISCLAIMER: NOT FINANCIAL ADVICE**")
 st.markdown("These results are for informational purposes only. Always conduct your own thorough research and consult with a qualified financial advisor before making any investment decisions.")
-st.markdown("---") # Add another separator line
 
 st.markdown("""
----
 🙏 If you find this information helpful and want to support my work, please consider [supporting me on Patreon](https://www.patreon.com/c/CSEMaverick) 💚
 """)
 
