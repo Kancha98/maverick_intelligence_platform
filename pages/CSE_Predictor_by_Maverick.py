@@ -166,7 +166,7 @@ try:
     filtered_df = filtered_df.drop(columns=[col for col in ['Vol Avg 5D','Vol Avg 20D', 'Ema 20', 'Ema 50', 'Ema 100', 'Ema 200', 'Last Updated'] if col in filtered_df.columns])
         
     # Display the filtered table
-    st.dataframe(filtered_df, use_container_width=True)
+    #st.dataframe(filtered_df, use_container_width=True)
     
     if not filtered_df.empty:
         st.markdown("## 💎 Maverick's Potential Gems")
