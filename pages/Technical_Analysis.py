@@ -184,6 +184,10 @@ st.markdown("Let's find Gems!")
 st.markdown("")
 st.markdown("Note: This app is for Research purposes only. Please do your own research before making any investment decisions.")
 
+st.markdown("""
+---
+🙏 If you find this information helpful and want to support my work, please consider [supporting me on Patreon](https://www.patreon.com/c/CSEMaverick) 💚
+""")
 
 # Add a button to force a data reload (clears cache)
 if st.button("Reload Data"):
@@ -614,8 +618,10 @@ try:
         st.info("No results match the selected filters.")
         
         # === Chart Section ===
+        
     if not filtered_df.empty:
-        selected_chart_symbol = st.selectbox("📊 View Chart for Symbol", filtered_df['Symbol'].unique())
+        st.markdown("### 📊 Closing Price Trend")
+        selected_chart_symbol = st.selectbox( filtered_df['Symbol'].unique())
         chart_df = filtered_df[filtered_df['Symbol'] == selected_chart_symbol]
         
         # Ensure data is sorted by Date
