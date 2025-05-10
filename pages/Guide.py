@@ -52,36 +52,28 @@ st.markdown(
     """
     Technical analysis is like being a **weather forecaster** for stocks. You're predicting future price movements based on past trends. Here's how to get started:
 
-    1. **Support and Resistance Levels:**
-        - Think of support as the "floor" and resistance as the "ceiling" for stock prices.
-        - 🏗️ *Buy near support, sell near resistance.*
-
-    2. **Moving Averages (MA):**
+    1. **Moving Averages (MA):**
         - These smooth out price data to identify trends.
         - 📈 *A 50-day MA crossing above a 200-day MA is called a "Golden Cross"—a bullish signal!*
 
-    3. **Relative Strength Index (RSI):**
+    2. **Relative Strength Index (RSI):**
         - RSI measures whether a stock is overbought or oversold.
         - ⚖️ *RSI above 70 = Overbought (sell); RSI below 30 = Oversold (buy).*
 
-    4. **Candlestick Patterns:**
-        - These patterns tell stories about market sentiment.
-        - 🕯️ *Look for bullish patterns like "Hammer" or bearish patterns like "Shooting Star."*
-
-    5. **Volume Analysis & Momentum:**
+    3. **Volume Analysis & Momentum:**
         - Volume confirms trends. A price increase with high volume = strong trend.
         - 🔊 *Beyond just volume, look for specific patterns:*
             - **High Bullish Momentum:** Strong buying pressure pushing prices up.
             - **Emerging Bullish Momentum:** Signs that buying pressure is starting to build.
             - **Increase in weekly Volume Activity Detected:** A notable jump in trading volume over the week, often preceding significant price moves.
 
-    6. **RSI Divergence:**
+    4. **RSI Divergence:**
         - This occurs when the price of an asset is moving in the opposite direction of the RSI indicator.
         - **Bullish Divergence:** Price makes a lower low, but RSI makes a higher low. This can signal that downward momentum is weakening and a price reversal might be coming (potential buy signal).
         - **Bearish Divergence:** Price makes a higher high, but RSI makes a lower high. This can signal that upward momentum is weakening and a price reversal might be coming (potential sell signal).
 
     7. **Turnover and Volume Thresholds:**
-        - High turnover (the total value of shares traded) and high volume indicate strong market interest and liquidity in a stock. Stocks with significant trading activity are often more attractive for technical analysis as patterns are more reliable.
+        - High turnover (the total value of shares traded x Price ) and high volume indicate strong market interest and liquidity in a stock. Stocks with significant trading activity are often more attractive for technical analysis as patterns are more reliable.
 
     **Pro Tip:** Combine multiple indicators for better accuracy. No single tool is perfect! 🛠️
     """
