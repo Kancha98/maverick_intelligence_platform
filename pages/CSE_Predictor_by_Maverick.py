@@ -102,6 +102,12 @@ def get_mavericks_picks(results_df):
 
     return tier_1_picks, tier_2_picks
 
+# Add a button to force a data reload (clears cache)
+if st.button("Reload Data"):
+    load_data.clear() # Clear the data cache
+    init_connection.clear() # Clear the connection cache
+    st.rerun() # Rerun the app immediately
+
 try:
     df = load_data()
 
