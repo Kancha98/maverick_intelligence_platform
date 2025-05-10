@@ -241,8 +241,7 @@ try:
             tier_2_picks = tier_2_picks.sort_values(by='date', ascending=False)
             
             
-            st.markdown("These stocks show moderate upside potential compared to the broader market. While not as strong as Tier 1 picks, they still present relatively favorable opportunities._")
-            st.markdown("Pay attention to the stocks that have recurring mentions in the list, they have much better chances!")
+            st.markdown("These stocks show moderate upside potential compared to the broader market. While not as strong as Tier 1 picks, they still present relatively favorable opportunities.")
                          # Rename columns for display
             
             # Define the list of columns to drop
@@ -284,14 +283,15 @@ try:
             # Display the dataframe with renamed columns
             st.dataframe(tier_2_picks_final, use_container_width=True)
             
-                    # Find recurring stocks based on the full tier 1 picks DataFrame
+            st.markdown("📊 **Interpreting Mention Frequency:**")
+            st.markdown("Stocks appearing **2-3 times** in this list could signal the early phase of a bullish trend, potentially offering more room for capital gains.")
+            st.markdown("Conversely, stocks with **5 or more mentions** might be further into their uptrend, where significant appreciation may have already occurred.")
             if not tier_2_picks_final.empty:
                 recurring_stocks_1 = tier_2_picks_final['Symbol'].value_counts()
                 recurring_stocks_1 = recurring_stocks_1[recurring_stocks_1 >= 3]
 
             if not recurring_stocks_1.empty:
                 st.markdown("List of Stocks with Repeated Bullish Volume Signatures:")
-                st.markdown("The stocks with the highest number of mentions in the list are are known to have a higher chance of giving good gains.") 
                 for stock, count in recurring_stocks_1.items():
                     st.markdown(f"- **{stock}**: {count} times")
             else:
