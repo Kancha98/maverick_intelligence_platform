@@ -266,6 +266,7 @@ try:
             tier_2_picks_processed['date'] = tier_2_picks_processed['date'].dt.strftime('%Y-%m-%d')
             
             tier_2_picks_processed = tier_2_picks.drop(columns=columns_to_drop).copy()
+            tier_2_picks_processed = tier_2_picks_processed.reset_index(drop=True)  # Remove index
             
             column_rename_map_filtered = {
                  'date': 'Date',
@@ -278,12 +279,6 @@ try:
                  'rsi': 'RSI',
                  'rsi_divergence': 'RSI Divergence',
                  'relative_strength': 'Relative Strength',
-                 'ema_20': 'EMA 20',
-                 'ema_50': 'EMA 50',
-                 'ema_100': 'EMA 100',
-                 'ema_200': 'EMA 200',
-                 'vol_avg_5d': 'Vol Avg 5D',
-                 'vol_avg_20d': 'Vol Avg 20D'
              }
             
             
