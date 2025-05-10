@@ -260,6 +260,7 @@ try:
                 "PBV": "{:.2f}",
                 "DY(%)": "{:.1f}",
                 "Latest Close Price": "{:.2f}",
+                "Dividend Per Share": "{:.2f}",
                 })
                 
                 st.dataframe(df_filtered)
