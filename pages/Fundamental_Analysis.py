@@ -262,10 +262,6 @@ try:
                 "Latest Close Price": "{:.2f}",
                 })
                 
-                # Display the resulting DataFrame
-                st.markdown(
-                        "Recent splits have not been taken into Calculation (Ex: SUN.N000 , WATA.N000")
-                
                 st.dataframe(df_filtered)
                 
                 
