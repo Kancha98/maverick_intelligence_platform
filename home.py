@@ -1,9 +1,11 @@
 # home.py
 import streamlit as st
+st.set_page_config(page_title="CSE Intelligence Platform", layout="wide")
+
 from auth_utils import get_oauth_client, do_login, do_logout, get_authenticated_user
 
 # Set the page configuration for the entire app
-st.set_page_config(page_title="CSE Intelligence Platform", layout="wide")
+
 
 # Welcome Title
 st.title("🌟 Welcome to the **CSE Intelligence Platform** by Maverick 🚀")
