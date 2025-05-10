@@ -284,6 +284,8 @@ try:
             st.dataframe(tier_2_picks_final, use_container_width=True)
             
             st.markdown("📊 **Interpreting Mention Frequency:**")
+            
+            
             st.markdown("Stocks appearing **2-3 times** in this list could signal the early phase of a bullish trend, potentially offering more room for capital gains.")
             st.markdown("Conversely, stocks with **5 or more mentions** might be further into their uptrend, where significant appreciation may have already occurred.")
            
@@ -292,9 +294,13 @@ try:
                 recurring_stocks_1 = recurring_stocks_1[(recurring_stocks_1 >= 2) & (recurring_stocks_1 <= 3)]
 
             if not recurring_stocks_1.empty:
-                st.markdown("List of Stocks with Early Bullish Volume Signatures:")
+                st.markdown("### 🌱 Stocks in Early Bullish Phase (📈 2–3 Mentions)")
+                early_html = "<ul style='font-size:16px;color:#0b5394'>"
                 for stock, count in recurring_stocks_1.items():
-                    st.markdown(f"- **{stock}**: {count} times")
+                    early_html += f"<li><b>{stock}</b>: {count} times</li>"
+                early_html += "</ul>"
+                st.markdown(early_html, unsafe_allow_html=True)
+
             else:
                  st.info("")
                  
@@ -303,11 +309,14 @@ try:
                 recurring_stocks_2 = recurring_stocks_2[recurring_stocks_2 >= 5]
 
             if not recurring_stocks_2.empty:
-                st.markdown("List of Stocks with Vibrant Bullish Volume Signatures:")
+                st.markdown("### 🔥 Stocks in Strong Bullish Phase (💥 5+ Mentions)")
+                vibrant_html = "<ul style='font-size:16px;color:#b10000'>"
                 for stock, count in recurring_stocks_2.items():
-                    st.markdown(f"- **{stock}**: {count} times")
+                    vibrant_html += f"<li><b>{stock}</b>: {count} times</li>"
+                vibrant_html += "</ul>"
+                st.markdown(vibrant_html, unsafe_allow_html=True)
             else:
-                 st.info("")
+                st.info("")
         else:
             st.info("No stocks meet Tier 2 conditions.")
             
