@@ -283,6 +283,18 @@ try:
 
             # Display the dataframe with renamed columns
             st.dataframe(tier_2_picks_final, use_container_width=True)
+            
+                    # Find recurring stocks based on the full tier 1 picks DataFrame
+            if not tier_2_picks_final.empty:
+                recurring_stocks_1 = tier_2_picks_final['symbol'].value_counts()
+                recurring_stocks_1 = recurring_stocks_1[recurring_stocks_1 >= 4]
+
+            if not recurring_stocks_1.empty:
+                st.markdown("List of Stocks with Repeated Bullish Volume Signatures:")
+                for stock, count in recurring_stocks_1.items():
+                    st.markdown(f"- **{stock}**: {count} times")
+            else:
+                 st.info("")
         else:
             st.info("No stocks meet Tier 2 conditions.")
             
