@@ -265,7 +265,6 @@ try:
             # Now format the datetime objects into strings with only the date part
             tier_2_picks_processed['date'] = tier_2_picks_processed['date'].dt.strftime('%Y-%m-%d')
             
-            tier_2_picks_processed = tier_2_picks.drop(columns=columns_to_drop).copy()
             tier_2_picks_processed = tier_2_picks_processed.reset_index(drop=True)  # Remove index
             
             column_rename_map_filtered = {
