@@ -74,6 +74,7 @@ def do_login(oauth_client):
         code = st.query_params["code"][0]
         try:
             # Debugging: Print the token request data
+            st.write(f"DEBUG: Value of 'code' extracted from query params: {code}")
             st.write("Token Request Data:", {
                 "code": code,
                 #"client_id": oauth_client.client_id,
