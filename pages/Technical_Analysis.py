@@ -621,8 +621,8 @@ try:
         
     if not filtered_df.empty:
         st.markdown("### 📊 Closing Price Trend")
-        selected_chart_symbol = st.selectbox("Select a Symbol for Chart", filtered_df['Symbol'].unique())
-        chart_df = filtered_df[filtered_df['Symbol'] == selected_chart_symbol]
+        selected_chart_symbol = st.selectbox("Select a Symbol for Chart", filtered_df['symbol'].unique())
+        chart_df = filtered_df[filtered_df['symbol'] == selected_chart_symbol]
         
         # Ensure data is sorted by Date
         chart_df = chart_df.sort_values(by='Date')
