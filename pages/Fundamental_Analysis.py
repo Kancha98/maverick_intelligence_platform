@@ -198,7 +198,7 @@ try:
                 df_combined['PER'] = df_combined['closing_price'] / df_combined['eps_ttm'].round(1)
 
                 # Calculate PBV: bvps / closing_price
-                df_combined['PBV'] = df_combined['bvps'] / df_combined['closing_price'].round(1)
+                df_combined['PBV'] = df_combined['closing_price'] / df_combined['bvps'].round(1)
                 
                 # Rename fields for display
                 df_combined.rename(columns={
@@ -269,7 +269,6 @@ try:
 ---
 🙏 If you find this information helpful and want to support my work, please consider [supporting me on Patreon ](https://www.patreon.com/c/CSEMaverick) 💚
 """)
-                
                 
 
             except Exception as e:
