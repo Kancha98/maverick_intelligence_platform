@@ -41,6 +41,12 @@ else:
         - 🛠️ **Manage your account** and preferences.
         """
     )
+    
+    st.markdown("""
+---
+🙏 If you find this information helpful and want to support my work, please consider [supporting me on Patreon](https://www.patreon.com/c/CSEMaverick) 💚
+""")
+
 
     st.subheader("✨ **Your Google Account Details**")
     st.write(f"👤 **Name:** {user_name}")

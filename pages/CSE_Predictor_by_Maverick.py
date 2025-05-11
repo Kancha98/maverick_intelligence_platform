@@ -134,9 +134,6 @@ try:
     #st.subheader("📄 Filtered Analysis Results")
     #st.dataframe(df, use_container_width=True)
 
-    # === Filters Section ===
-    st.markdown("### 🔍 Apply Filters")
-
     # Range sliders
     date_range = st.slider(
         "Date Range",
