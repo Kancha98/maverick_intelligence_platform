@@ -625,10 +625,10 @@ try:
         chart_df = filtered_df[filtered_df['symbol'] == selected_chart_symbol]
         
         # Ensure data is sorted by Date
-        chart_df = chart_df.sort_values(by='Date')
+        chart_df = chart_df.sort_values(by='date')
         
         fig = px.line(chart_df, 
-                      x='Date', 
+                      x='date', 
                       y='Closing Price', 
                       title=f"📈 Closing Price Trend for {selected_chart_symbol}",
                       markers=True)
