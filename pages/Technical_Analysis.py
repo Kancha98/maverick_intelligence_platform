@@ -629,7 +629,7 @@ try:
         
         fig = px.line(chart_df, 
                       x='date', 
-                      y='Closing Price', 
+                      y='closing _price', 
                       title=f"📈 Closing Price Trend for {selected_chart_symbol}",
                       markers=True)
         
