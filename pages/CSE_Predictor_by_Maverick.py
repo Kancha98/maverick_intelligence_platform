@@ -302,8 +302,8 @@ try:
                 st.dataframe(
                     early_phase_df,
                     column_config={
-                        "Symbol": st.column_config.TextColumn("Symbol"),
-                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times")
+                        "Symbol": st.column_config.TextColumn("Symbol", width=100),
+                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times", width=100)
                     },
                     hide_index=True, # Hide the default DataFrame index
                     use_container_width=True # Use full width
