@@ -238,7 +238,7 @@ try:
             st.markdown("These stocks show moderate upside potential compared to the broader market. While not as strong as Tier 1 picks, they still present relatively favorable opportunities.")
                          # Rename columns for display
                          
-            st.markdown("Note: These stocks are listed based on the highest turnover.")
+            st.markdown("Note: These stocks are listed based on the highest turnover, Strong Volume Signature and performance relative to ASI.")
                          # Rename columns for display
             
             # Define the list of columns to drop
