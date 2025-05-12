@@ -288,6 +288,8 @@ try:
            
             if not tier_2_picks_final.empty:
                 
+                tier_2_picks_final['Date'] = pd.to_datetime(tier_2_picks_final['Date'])
+                
                 recurring_data = tier_2_picks_final.groupby('Symbol').agg(
                     Mentions=('Symbol', 'size'),
                     First_Detected_Date=('Date','min'),
@@ -298,19 +300,37 @@ try:
                 recurring_stocks_2 = recurring_data[recurring_data['Mentions'] >= 4]
 
             if not recurring_stocks_1.empty:
+                
+                first_day_prices = tier_2_picks_final[['Symbol', 'Date', 'Today Closing Price']]
+                merged = pd.merge(
+                    recurring_stocks_1,
+                    first_day_prices,
+                    left_on=['Symbol', 'First_Detected_Date'],
+                    right_on=['Symbol', 'Date'],
+                    how='left'
+                ).rename(columns={"Today Closing Price": "First_Day_Price"})
+
+                # Calculate % Gain
+                merged['% Gain'] = ((merged['Today_Price'] - merged['First_Day_Price']) / merged['First_Day_Price'] * 100).round(2)
+
+                # Final columns
+                display_df = merged[['Symbol', 'Mentions', 'First_Detected_Date', 'First_Day_Price', 'Today_Price', '% Gain']]
+                
                 st.markdown("### 🌱 Stocks in Early Bullish Phase (📈 2–3 Mentions)")
                 # Convert the Series to a DataFrame
                 # Rename columns for clarity
                 recurring_stocks_1.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
                 # Display the DataFrame as a table
                 st.dataframe(
-                    recurring_stocks_1,
+                    display_df,
                     column_config={
-                        "Symbol": st.column_config.TextColumn("Symbol", width=100),
-                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
-                        "First_Detected_Date": st.column_config.DateColumn("Date", width=150),
-                        "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
-                    },
+                "Symbol": st.column_config.TextColumn("Symbol", width=100),
+                "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
+                "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
+                "First_Day_Price": st.column_config.NumberColumn("First Day Price", format="%.2f", width=150),
+                "Today_Price": st.column_config.NumberColumn("Today's Price", format="%.2f", width=150),
+                "% Gain": st.column_config.NumberColumn("% Gain", format="%.2f%%", width=100),
+                },
                     hide_index=True, # Hide the default DataFrame index
                     use_container_width=True # Use full width
                 )
@@ -321,16 +341,15 @@ try:
             if not recurring_stocks_2.empty:
                 st.markdown("### 🔥 Stocks in Strong Bullish Phase (💥 4+ Mentions)")
                  # Convert the Series to a DataFrame
-                strong_phase_df = recurring_stocks_2.reset_index()
                  # Rename columns for clarity
-                strong_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
+                recurring_stocks_2.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
                  # Display the DataFrame as a table
                 st.dataframe(
-                    strong_phase_df,
+                    recurring_stocks_2,
                      column_config={
                         "Symbol": st.column_config.TextColumn("Symbol"),
                         "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
-                        "First_Detected_Date": st.column_config.DateColumn("Date", format="YYYY-MM-DD", width=150),
+                        "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
                         "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
                     },
                     hide_index=True, # Hide the default DataFrame index
