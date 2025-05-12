@@ -300,13 +300,11 @@ try:
             if not recurring_stocks_1.empty:
                 st.markdown("### 🌱 Stocks in Early Bullish Phase (📈 2–3 Mentions)")
                 # Convert the Series to a DataFrame
-                early_phase_df = recurring_stocks_1.reset_index()
-                st.dataframe(early_phase_df, use_container_width=True)
                 # Rename columns for clarity
-                early_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price','index']
+                recurring_stocks_1.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price','index']
                 # Display the DataFrame as a table
                 st.dataframe(
-                    early_phase_df,
+                    recurring_stocks_1,
                     column_config={
                         "Symbol": st.column_config.TextColumn("Symbol", width=100),
                         "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
