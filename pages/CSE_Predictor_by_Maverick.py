@@ -6,6 +6,7 @@ import urllib.parse as urlparse
 import plotly.express as px
 from dotenv import load_dotenv
 from auth_utils import get_authenticated_user
+from datetime import datetime
 
 # --- Load environment variables ---
 load_dotenv(dotenv_path=r"E:\Side Projects\CSE bot\myenv\streamlit\myenv\Scripts\.env")
@@ -167,9 +168,13 @@ try:
         st.markdown("## 💎 Maverick's Potential Gems")
         
         # Add a date picker for filtering Maverick's Picks
+        today = datetime.now()
+        first_day_of_month = today.replace(day=1).date()
+        
         selected_maverick_date = st.date_input(
         "Select Start Date for Maverick's Picks",
-        value=filtered_df['Date'].min().date(),  # Default to the earliest date in the filtered data
+
+        value=first_day_of_month, 
         min_value=filtered_df['Date'].min().date(),
         max_value=filtered_df['Date'].max().date()
         )
