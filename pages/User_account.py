@@ -1,5 +1,5 @@
 import streamlit as st
-import psycopg2  # Import the psycopg2 library
+import psycopg2
 from urllib.parse import urlparse
 import os
 
@@ -12,24 +12,26 @@ def init_connection():
     db_url = st.secrets.get("NEON_DB_URL") or os.environ.get("NEON_DB_URL")
 
     if not db_url:
-        st.error("Database URL not found. Please configure Streamlit Secrets or NEON_DB_URL environment variable.")
+        st.error(
+            "Database URL not found. Please configure Streamlit Secrets or NEON_DB_URL environment variable."
+        )
         return None
 
     try:
         url = urlparse(db_url)
         conn = psycopg2.connect(
-            database=url.path[1:],  # [1:] to remove the leading slash
+            database=url.path[1:],
             user=url.username,
             password=url.password,
             host=url.hostname,
-            port=url.port or "5432",  # Default to 5432 if port is not specified
-            sslmode="require",  # Ensure SSL is used for Neon
+            port=url.port or "5432",
+            sslmode="require",
         )
-        # st.success("Database connection established.") # Removed success message for cleaner UI
         return conn
     except Exception as e:
         st.error(f"Failed to connect to database: {e}")
         return None
+
 
 def insert_user_data(conn, phone_number, username, index_value):
     """
@@ -37,25 +39,34 @@ def insert_user_data(conn, phone_number, username, index_value):
     Takes the database connection as an argument.
     """
     if conn is None:
-        return False  # Exit if the database connection failed
+        return False
 
     try:
         cursor = conn.cursor()
+        # Check if the phone number already exists
+        sql_check = "SELECT 1 FROM notification_ids WHERE phone_number = %s AND index_value = %s;"
+        cursor.execute(sql_check, (phone_number, index_value))
+        if cursor.fetchone():
+            st.warning(
+                f"Phone number +{index_value}{phone_number} already exists!"
+            )
+            return False
+
         # SQL query to insert data
-        sql = "INSERT INTO notification_ids (phone_number, username, index_value) VALUES (%s, %s, %s);" # Added index_value to query
-        cursor.execute(sql, (phone_number, username, index_value))
+        sql_insert = "INSERT INTO notification_ids (phone_number, username, index_value) VALUES (%s, %s, %s);"  # Added index_value to query
+        cursor.execute(sql_insert, (phone_number, username, index_value))
         conn.commit()
-        st.success(f"Data inserted successfully for username: {username} and Phone Number: +{index_value}{phone_number}!")  # Show a success message
-        return True  # Return True on Success
+        st.success(
+            f"Successfully Subscribed! Lets Go!!. Phone Number: +{index_value}{phone_number}"
+        )  # Show a success message
+        return True
     except Exception as e:
-        st.error(f"Error inserting data: {e}")  # Display the error in Streamlit
-        return False  # Return False on Error
+        st.error(f"Error inserting data: {e}")
+        return False
     finally:
-        # Ensure the database connection is closed
         if conn:
             cursor.close()
-            #DO NOT close the connection here.  The cached connection should remain open.
-            #conn.close()
+
 
 def main():
     """
@@ -66,21 +77,24 @@ def main():
     # Input fields for phone number and username
     st.write("Please enter your phone number and username to subscribe to our alerts.")
     index_value = st.text_input("Country Code (e.g., 94):")
-    phone_number = st.text_input("Phone Number(e.g., 7712345):")
+    phone_number = st.text_input("Phone Number (e.g., 7712345):")
     username = st.text_input("Username:")
 
     # Get the database connection
     conn = init_connection()
     if conn is None:
-        st.stop()  # Stop if the database connection fails
+        st.stop()
 
     # Button to trigger the data insertion
     if st.button("Submit"):
-        if phone_number and username:  # check if both fields are not empty
-            insert_user_data(conn, phone_number, username, index_value)
+        if not phone_number or not username:
+            st.warning("Please enter both phone number and username.")
+        elif index_value == "94" and len(phone_number) != 9:
+            st.warning(
+                "Invalid phone number. For country code 94, the phone number must be 9 digits."
+            )
         else:
-            st.warning("Please enter both phone number and username.")  # show warning
-
+            insert_user_data(conn, phone_number, username, index_value)
 
 
 if __name__ == "__main__":
