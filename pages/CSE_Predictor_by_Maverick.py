@@ -135,21 +135,9 @@ try:
     #st.dataframe(df, use_container_width=True)
 
     # Range sliders
-    date_range = st.slider(
-        "Date Range",
-        min_value=df['last_updated'].min().date(),
-        max_value=df['last_updated'].max().date(),
-        value=(df['last_updated'].min().date(), df['last_updated'].max().date())
-    )
-    
 
     # Apply filters
     filtered_df = df.copy()
-
-    filtered_df = filtered_df[
-        (filtered_df['date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])))
-    ]
-    
     
     # Rename headers
     filtered_df.columns = [col.replace('_', ' ').title() for col in filtered_df.columns]
@@ -225,7 +213,7 @@ try:
             st.markdown("These are the counters identified by Maverick as having the highest potential for Gains.")
             
         else:
-            st.info("No stocks meet Tier 1 conditions.")
+            st.info("No stocks meet Tier 1 conditions today.")
         # Display Tier 2 Picks
         st.markdown("### Tier 🔹 2 Picks")
         if not tier_2_picks.empty:
@@ -243,6 +231,9 @@ try:
             
             
             st.markdown("These stocks show moderate upside potential compared to the broader market. While not as strong as Tier 1 picks, they still present relatively favorable opportunities.")
+                         # Rename columns for display
+                         
+            st.markdown("Note: These stocks are listed based on the highest turnover.")
                          # Rename columns for display
             
             # Define the list of columns to drop
@@ -281,8 +272,11 @@ try:
             
             tier_2_picks_final  = tier_2_picks_processed.rename(columns=column_rename_map_filtered)
 
-            # Display the dataframe with renamed columns
-            st.dataframe(tier_2_picks_final, use_container_width=True)
+            # Sort by Turnover (highest to lowest)
+            tier_2_picks_final_sorted = tier_2_picks_final.sort_values(by='Turnover', ascending=False)
+
+            # Display the dataframe with renamed columns and sorted by Turnover
+            st.dataframe(tier_2_picks_final_sorted, use_container_width=True)
             
             st.markdown("### 📊 **Interpreting Mention Frequency:**")
             
