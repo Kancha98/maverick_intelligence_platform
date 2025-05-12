@@ -339,14 +339,14 @@ try:
                 st.info("No stocks found in the early bullish phase (2-3 mentions) for the selected period.")
                  
             if not recurring_stocks_2.empty:
-                first_day_prices_strong = tier_2_picks_final[['Symbol', 'First Detected Date', 'Today\'s Price']]
+                first_day_prices_strong = tier_2_picks_final[['Symbol', 'Date', 'Today Closing Price']]
                 merged_strong = pd.merge(
                     recurring_stocks_2,
                     first_day_prices_strong,
                     left_on=['Symbol', 'First_Detected_Date'],
-                    right_on=['Symbol', 'First Detected Date'],
+                    right_on=['Symbol', 'Date'],
                     how='left'
-                ).rename(columns={"Today's Price_y": "First_Day_Price", "Today's Price_x": "Today_Price"})
+                ).rename(columns={"Today Closing Price": "First_Day_Price"})
 
                 # Calculate % Gain
                 merged_strong['% Gain'] = ((merged_strong['Today_Price'].astype(float) - merged_strong['First_Day_Price'].astype(float)) / merged_strong['First_Day_Price'].astype(float) * 100).round(2).fillna(0).map('{:.2f}%'.format)
