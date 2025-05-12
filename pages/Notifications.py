@@ -80,6 +80,10 @@ def main():
 
     st.write(
         "Stay informed with our Intelligent Alerts!"
+
+    )
+    
+    st.write(
         "Please enter your phone number and username to subscribe."
     )
 
@@ -125,7 +129,7 @@ def main():
         }
         </style>
         <footer>
-            Powered by [Your Company/Project] | Contact: support@example.com
+            Powered by Maverick Intelligence Pvt Ltd  - mavrickintel.com
         </footer>
         """,
         unsafe_allow_html=True
