@@ -60,7 +60,7 @@ def init_connection():
         st.error(f"Failed to connect to database: {e}")
         return None
 
-def insert_user_data(conn, phone_number, username):
+def insert_user_data(conn, phone_number, username,index_value):
     """
     Inserts user phone number and username into the notification_ids table.
     Takes the database connection as an argument.
@@ -72,9 +72,9 @@ def insert_user_data(conn, phone_number, username):
         cursor = conn.cursor()
         # SQL query to insert data
         sql = "INSERT INTO notification_ids (phone_number, username) VALUES (%s, %s);"
-        cursor.execute(sql, (phone_number, username))
+        cursor.execute(sql, (phone_number, username,index_value))
         conn.commit()
-        st.success(f"Data inserted successfully for username: {username} and Phone Number: {phone_number}!")  # Show a success message
+        st.success(f"Data inserted successfully for username: {username} and Phone Number: +{index_value}{phone_number}!")  # Show a success message
         return True  # Return True on Success
     except Exception as e:
         st.error(f"Error inserting data: {e}")  # Display the error in Streamlit
@@ -94,8 +94,8 @@ def main():
 
     # Input fields for phone number and username
     st.write("Please enter your phone number and username to subscribe to our alerts.")
-    index_value = st.text_input("Country Code (e.g., +94):")
-    phone_number = st.text_input("Phone Number:")
+    index_value = st.text_input("Country Code (e.g., 94):")
+    phone_number = st.text_input("Phone Number(e.g., 7712345):")
     username = st.text_input("Username:")
 
     # Get the database connection
