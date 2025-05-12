@@ -1,67 +1,101 @@
-# pages/notifications.py
 import streamlit as st
-from auth_utils import get_authenticated_user # Import the authentication helper
-from redis import Redis # Import Redis client
+import psycopg2
+from urllib.parse import urlparse
 import os
-from datetime import datetime
-import pytz # For timezone handling
 
-# --- Authentication Check ---
-# This check is crucial for every page that requires authentication.
-user_info = get_authenticated_user()
-if not user_info:
-    st.warning("Please log in to view this page.")
-    st.stop() # This stops the script execution for this specific page
+# --- Database Connection ---
+# Use st.cache_resource for the database connection to reuse it across reruns
+@st.cache_resource
+def init_connection():
+    """Initializes and caches the database connection."""
+    # Attempt to get DB URL from Streamlit Secrets (deployment) or environment variables (local)
+    db_url = st.secrets.get("NEON_DB_URL") or os.environ.get("NEON_DB_URL")
 
-# User is logged in, get their email for checking notification status
-user_email = user_info.get('email', 'N/A')
+    if not db_url:
+        st.error(
+            "Database URL not found. Please configure Streamlit Secrets or NEON_DB_URL environment variable."
+        )
+        return None
 
-st.title("Notification Status")
+    try:
+        url = urlparse(db_url)
+        conn = psycopg2.connect(
+            database=url.path[1:],
+            user=url.username,
+            password=url.password,
+            host=url.hostname,
+            port=url.port or "5432",
+            sslmode="require",
+        )
+        return conn
+    except Exception as e:
+        st.error(f"Failed to connect to database: {e}")
+        return None
 
-# --- Redis Setup (Consistent across app files that interact with Redis) ---
-# Ensure these connection details match your Redis server and task.py
-REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
-REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
-REDIS_DB = int(os.environ.get('REDIS_DB', 0))
 
-# Attempt to connect to Redis. If it fails, disable status check.
-try:
-    redis_conn_app = Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
-    redis_conn_app.ping() # Check connection by sending a PING command
-    redis_available = True
-except Exception as e:
-    st.warning(f"Could not connect to Redis: {e}. Cannot check notification status.")
-    redis_available = False
+def insert_user_data(conn, phone_number, username, index_value):
+    """
+    Inserts user phone number and username into the notification_ids table.
+    Takes the database connection as an argument.
+    """
+    if conn is None:
+        return False
 
-# --- Notification Status Display ---
+    try:
+        cursor = conn.cursor()
+        # Check if the phone number already exists
+        sql_check = "SELECT 1 FROM notification_ids WHERE phone_number = %s AND index_value = %s;"
+        cursor.execute(sql_check, (phone_number, index_value))
+        if cursor.fetchone():
+            st.warning(
+                f"Phone number +{index_value}{phone_number} already exists!"
+            )
+            return False
 
-st.subheader("Daily Email Notification Status")
+        # SQL query to insert data
+        sql_insert = "INSERT INTO notification_ids (phone_number, username, index_value) VALUES (%s, %s, %s);"  # Added index_value to query
+        cursor.execute(sql_insert, (phone_number, username, index_value))
+        conn.commit()
+        st.success(
+            f"Successfully Subscribed! Lets Go!!. Phone Number: +{index_value}{phone_number}"
+        )  # Show a success message
+        return True
+    except Exception as e:
+        st.error(f"Error inserting data: {e}")
+        return False
+    finally:
+        if conn:
+            cursor.close()
 
-if redis_available:
-    # Construct the Redis key used by the worker to mark notifications sent
-    today_str = datetime.now().strftime('%Y-%m-%d')
-    redis_key = f"notification_sent:{user_email}:{today_str}"
 
-    # Check if the key exists in Redis
-    if redis_conn_app.exists(redis_key):
-        st.success("Your daily picks notification has been sent today.")
-        # Optional: If your worker stored a timestamp, you could retrieve and display it
-        # sent_timestamp = redis_conn_app.get(redis_key)
-        # if sent_timestamp:
-        #    # Convert timestamp (bytes) to string, then int, then datetime
-        #    try:
-        #        sent_time = datetime.fromtimestamp(int(sent_timestamp.decode('utf-8')))
-        #        st.write(f"Sent at: {sent_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        #    except (ValueError, TypeError) as ts_error:
-        #        st.warning(f"Could not parse timestamp from Redis: {ts_error}")
-    else:
-        st.info("Your daily picks notification has not been sent today.")
-        st.write("Go to the Dashboard page that generates picks (e.g., Dashboard 1) and click 'Send My Picks via Email' to trigger it.")
+def main():
+    """
+    Streamlit application to get user input and insert into the database.
+    """
+    st.title("Subscribe to our 'Intelligent Alerts' SMS Service")
 
-    st.subheader("Notification History (Requires Database Storage)")
-    st.write("To see a history of notifications sent over time (beyond just today's status), you would need to store this information in a persistent database.")
-    st.write("The current setup uses Redis only to enforce the daily sending limit.")
+    # Input fields for phone number and username
+    st.write("Please enter your phone number and username to subscribe to our alerts.")
+    index_value = st.text_input("Country Code (e.g., 94):")
+    phone_number = st.text_input("Phone Number (e.g., 7712345):")
+    username = st.text_input("Username:")
 
-else:
-    st.warning("Notification Functionality is coming Soon!.")
+    # Get the database connection
+    conn = init_connection()
+    if conn is None:
+        st.stop()
 
+    # Button to trigger the data insertion
+    if st.button("Submit"):
+        if not phone_number or not username:
+            st.warning("Please enter both phone number and username.")
+        elif index_value == "94" and len(phone_number) != 9:
+            st.warning(
+                "Invalid phone number. For country code 94, the phone number must be 9 digits."
+            )
+        else:
+            insert_user_data(conn, phone_number, username, index_value)
+
+
+if __name__ == "__main__":
+    main()
