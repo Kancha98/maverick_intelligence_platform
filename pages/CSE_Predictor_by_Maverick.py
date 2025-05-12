@@ -225,8 +225,7 @@ try:
             
             columns_to_remove = ['vol_avg_5d', 'vol_avg_20d']
             tier_2_picks = tier_2_picks.drop(columns=[col for col in columns_to_remove if col in tier_1_picks.columns])
-            tier_2_picks = tier_2_picks.sort_values(by='date', ascending=False)
-            tier_2_picks = tier_2_picks.sort_values(by='turnover', ascending=False)
+            tier_2_picks = tier_2_picks.sort_values(by=['date', 'turnover'], ascending=[False, False])
             
             
             # Format numeric values with commas
@@ -278,11 +277,8 @@ try:
             
             tier_2_picks_final  = tier_2_picks_processed.rename(columns=column_rename_map_filtered)
 
-            # Sort by Turnover (highest to lowest)
-            tier_2_picks_final_sorted = tier_2_picks_final.sort_values(by='Turnover', ascending=False)
-
             # Display the dataframe with renamed columns and sorted by Turnover
-            st.dataframe(tier_2_picks_final_sorted, use_container_width=True)
+            st.dataframe(tier_2_picks_final, use_container_width=True)
             
             st.markdown("### 📊 **Interpreting Mention Frequency:**")
             
