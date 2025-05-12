@@ -301,7 +301,7 @@ try:
                 st.markdown("### 🌱 Stocks in Early Bullish Phase (📈 2–3 Mentions)")
                 # Convert the Series to a DataFrame
                 # Rename columns for clarity
-                recurring_stocks_1.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price','index']
+                recurring_stocks_1.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
                 # Display the DataFrame as a table
                 st.dataframe(
                     recurring_stocks_1,
@@ -323,7 +323,7 @@ try:
                  # Convert the Series to a DataFrame
                 strong_phase_df = recurring_stocks_2.reset_index()
                  # Rename columns for clarity
-                strong_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price','index']
+                strong_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
                  # Display the DataFrame as a table
                 st.dataframe(
                     strong_phase_df,
