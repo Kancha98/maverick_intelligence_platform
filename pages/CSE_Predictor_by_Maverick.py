@@ -293,7 +293,7 @@ try:
                 recurring_data = tier_2_picks_final.groupby('Symbol').agg(
                     Mentions=('Symbol', 'size'),
                     First_Detected_Date=('Date','min'),
-                    Today_Price=('Today Closing Price', 'last')
+                    Today_Price=('Today Closing Price', 'first')
                 ).reset_index()
                 
                 recurring_stocks_1 = recurring_data[(recurring_data['Mentions'] >= 2) & (recurring_data['Mentions'] <= 3)]
