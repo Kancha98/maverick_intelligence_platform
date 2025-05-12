@@ -288,34 +288,49 @@ try:
            
             if not tier_2_picks_final.empty:
                 recurring_stocks_1 = tier_2_picks_final['Symbol'].value_counts()
+                recurring_stocks_2 = tier_2_picks_final['Symbol'].value_counts()
                 recurring_stocks_1 = recurring_stocks_1[(recurring_stocks_1 >= 2) & (recurring_stocks_1 <= 3)]
+                recurring_stocks_2 = recurring_stocks_1[ (recurring_stocks_1 >= 4)]
 
             if not recurring_stocks_1.empty:
                 st.markdown("### 🌱 Stocks in Early Bullish Phase (📈 2–3 Mentions)")
-                early_html = "<ul style='font-size:16px;color:#66bb6a'>"
-                for stock, count in recurring_stocks_1.items():
-                    early_html += f"<li><b>{stock}</b>: {count} times</li>"
-                early_html += "</ul>"
-                st.markdown(early_html, unsafe_allow_html=True)
-
+                # Convert the Series to a DataFrame
+                early_phase_df = recurring_stocks_1.reset_index()
+                # Rename columns for clarity
+                early_phase_df.columns = ['Symbol', 'Mentions']
+                # Display the DataFrame as a table
+                st.dataframe(
+                    early_phase_df,
+                    column_config={
+                        "Symbol": st.column_config.TextColumn("Symbol"),
+                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times")
+                    },
+                    hide_index=True, # Hide the default DataFrame index
+                    use_container_width=True # Use full width
+                )
             else:
-                 st.info("")
+                 # Provide a more informative message if no stocks are found
+                st.info("No stocks found in the early bullish phase (2-3 mentions) for the selected period.")
                  
-            if not tier_2_picks_final.empty:
-                recurring_stocks_2 = tier_2_picks_final['Symbol'].value_counts()
-                recurring_stocks_2 = recurring_stocks_2[recurring_stocks_2 >= 5]
-
-            if not recurring_stocks_2.empty:
-                st.markdown("### 🔥 Stocks in Strong Bullish Phase (💥 5+ Mentions)")
-                vibrant_html = "<ul style='font-size:16px;color:#2e7d32'>"
-                for stock, count in recurring_stocks_2.items():
-                    vibrant_html += f"<li><b>{stock}</b>: {count} times</li>"
-                vibrant_html += "</ul>"
-                st.markdown(vibrant_html, unsafe_allow_html=True)
+            if not recurring_stocks_1.empty:
+                st.markdown("### 🔥 Stocks in Strong Bullish Phase (💥 4+ Mentions)")
+                 # Convert the Series to a DataFrame
+                strong_phase_df = recurring_stocks_1.reset_index()
+                 # Rename columns for clarity
+                strong_phase_df.columns = ['Symbol', 'Mentions']
+                 # Display the DataFrame as a table
+                st.dataframe(
+                    strong_phase_df,
+                     column_config={
+                        "Symbol": st.column_config.TextColumn("Symbol"),
+                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times")
+                    },
+                    hide_index=True, # Hide the default DataFrame index
+                    use_container_width=True # Use full width
+                )
             else:
-                st.info("")
-        else:
-            st.info("No stocks meet Tier 2 conditions.")
+                 # Provide a more informative message if no stocks are found
+                st.info("No stocks found in the strong bullish phase (5+ mentions) for the selected period.")
             
     # === Chart Section ===
     if not filtered_df.empty:
