@@ -276,6 +276,7 @@ try:
             
             
             tier_2_picks_final  = tier_2_picks_processed.rename(columns=column_rename_map_filtered)
+            tier_2_picks_final['Turnover'] = pd.to_numeric(tier_2_picks_final['Turnover'], errors='coerce').fillna(0).astype(int)
 
             # Sort by Turnover (highest to lowest)
             tier_2_picks_final_sorted = tier_2_picks_final.sort_values(by='Turnover', ascending=False)
