@@ -301,6 +301,8 @@ try:
                 st.markdown("### 🌱 Stocks in Early Bullish Phase (📈 2–3 Mentions)")
                 # Convert the Series to a DataFrame
                 early_phase_df = recurring_stocks_1.reset_index()
+                st.write("early_phase_df shape:", early_phase_df.shape)
+                st.write("early_phase_df columns:", early_phase_df.columns)
                 # Rename columns for clarity
                 early_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
                 # Display the DataFrame as a table
