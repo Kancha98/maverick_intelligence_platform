@@ -225,6 +225,9 @@ try:
             
             columns_to_remove = ['vol_avg_5d', 'vol_avg_20d']
             tier_2_picks = tier_2_picks.drop(columns=[col for col in columns_to_remove if col in tier_1_picks.columns])
+            tier_2_picks = tier_2_picks.sort_values(by='date', ascending=False)
+            tier_2_picks = tier_2_picks.sort_values(by='turnover', ascending=False)
+            
             
             # Format numeric values with commas
             for col in ['turnover', 'volume']:
@@ -232,8 +235,6 @@ try:
                     tier_2_picks[col] = tier_2_picks[col].apply(lambda x: f"{x:,.2f}" if pd.notnull(x) else x)
     
             # Sort by Date
-            tier_2_picks = tier_2_picks.sort_values(by='date', ascending=False)
-            
             
             st.markdown("These stocks show moderate upside potential compared to the broader market. While not as strong as Tier 1 picks, they still present relatively favorable opportunities.")
                          # Rename columns for display
