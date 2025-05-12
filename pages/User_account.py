@@ -23,7 +23,6 @@ user_picture = user_info.get('picture') # URL to the user's profile picture
 # Display the user's information
 st.write(f"**Name:** {user_name}")
 st.write(f"**Email:** {user_email}")
-st.write(f"**Google User ID:** {user_id}")
 
 # Display the profile picture if available
 if user_picture:
