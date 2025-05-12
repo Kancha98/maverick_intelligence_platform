@@ -64,6 +64,9 @@ def insert_user_data(conn, phone_number, username, index_value):
         st.success(
             f"Successfully Subscribed! Lets Go!!. Phone Number: +{index_value}{phone_number} 🎉"
         )
+        st.info(
+            "🔔 Heads up!\n\nYou're on a 30-day free trial. To keep receiving timely stock alerts, subscribe to a plan.\n\nNeed help? Contact the Maverick Intelligence Team anytime!"
+        )
         return True
     except Exception as e:
         st.error(f"Error inserting data: {e} ⚠️")
@@ -144,7 +147,7 @@ def main():
         }
         </style>
         <footer>
-            Powered by Maverick Intelligence Pvt Ltd - mavrickintel.com  | Contact: support@example.com 📧
+            Powered by Maverick Intelligence Pvt Ltd | mavrickintel.com
         </footer>
         """,
         unsafe_allow_html=True,
