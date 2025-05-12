@@ -1,36 +1,7 @@
-# pages/user_account.py
 import streamlit as st
-from auth_utils import get_authenticated_user # Import the authentication helper
 import psycopg2  # Import the psycopg2 library
 from urllib.parse import urlparse
 import os
-
-# --- Authentication Check ---
-# This check is crucial for every page that requires authentication.
-user_info = get_authenticated_user()
-if not user_info:
-    # If user is not logged in, show a warning and stop execution of this page
-    st.warning("Please log in to view this page.")
-    st.stop() # This stops the script execution for this specific page
-
-# User is logged in, proceed with displaying user account details
-st.title("User Account Details")
-
-st.subheader("Your Google Account Information")
-
-# Retrieve user details from the user_info dictionary
-user_email = user_info.get('email', 'N/A')
-user_name = user_info.get('name', 'User')
-user_picture = user_info.get('picture') # URL to the user's profile picture
-
-# Display the user's information
-st.write(f"**Name:** {user_name}")
-st.write(f"**Email:** {user_email}")
-
-# Display the profile picture if available
-if user_picture:
-    st.image(user_picture, caption="Profile Picture", width=100)
-
 
 # --- Database Connection ---
 # Use st.cache_resource for the database connection to reuse it across reruns
@@ -60,7 +31,7 @@ def init_connection():
         st.error(f"Failed to connect to database: {e}")
         return None
 
-def insert_user_data(conn, phone_number, username,index_value):
+def insert_user_data(conn, phone_number, username, index_value):
     """
     Inserts user phone number and username into the notification_ids table.
     Takes the database connection as an argument.
@@ -71,8 +42,8 @@ def insert_user_data(conn, phone_number, username,index_value):
     try:
         cursor = conn.cursor()
         # SQL query to insert data
-        sql = "INSERT INTO notification_ids (phone_number, username) VALUES (%s, %s);"
-        cursor.execute(sql, (phone_number, username,index_value))
+        sql = "INSERT INTO notification_ids (phone_number, username, index_value) VALUES (%s, %s, %s);" # Added index_value to query
+        cursor.execute(sql, (phone_number, username, index_value))
         conn.commit()
         st.success(f"Data inserted successfully for username: {username} and Phone Number: +{index_value}{phone_number}!")  # Show a success message
         return True  # Return True on Success
@@ -106,7 +77,7 @@ def main():
     # Button to trigger the data insertion
     if st.button("Submit"):
         if phone_number and username:  # check if both fields are not empty
-            insert_user_data(conn, phone_number, username,index_value)
+            insert_user_data(conn, phone_number, username, index_value)
         else:
             st.warning("Please enter both phone number and username.")  # show warning
 
