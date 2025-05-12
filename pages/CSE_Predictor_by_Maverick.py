@@ -303,7 +303,7 @@ try:
                 early_phase_df = recurring_stocks_1.reset_index()
                 st.dataframe(early_phase_df, use_container_width=True)
                 # Rename columns for clarity
-                early_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
+                early_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price','index']
                 # Display the DataFrame as a table
                 st.dataframe(
                     early_phase_df,
@@ -325,7 +325,7 @@ try:
                  # Convert the Series to a DataFrame
                 strong_phase_df = recurring_stocks_2.reset_index()
                  # Rename columns for clarity
-                strong_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
+                strong_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price','index']
                  # Display the DataFrame as a table
                 st.dataframe(
                     strong_phase_df,
