@@ -339,18 +339,33 @@ try:
                 st.info("No stocks found in the early bullish phase (2-3 mentions) for the selected period.")
                  
             if not recurring_stocks_2.empty:
+                first_day_prices_strong = tier_2_picks_final[['Symbol', 'First Detected Date', 'Today\'s Price']]
+                merged_strong = pd.merge(
+                    recurring_stocks_2,
+                    first_day_prices_strong,
+                    left_on=['Symbol', 'First_Detected_Date'],
+                    right_on=['Symbol', 'First Detected Date'],
+                    how='left'
+                ).rename(columns={"Today's Price_y": "First_Day_Price", "Today's Price_x": "Today_Price"})
+
+                # Calculate % Gain
+                merged_strong['% Gain'] = ((merged_strong['Today_Price'].astype(float) - merged_strong['First_Day_Price'].astype(float)) / merged_strong['First_Day_Price'].astype(float) * 100).round(2).fillna(0).map('{:.2f}%'.format)
+
+                # Final columns
+                display_df_strong = merged_strong[['Symbol', 'Mentions', 'First_Detected_Date', 'First_Day_Price', 'Today_Price', '% Gain']]
+                
                 st.markdown("### 🔥 Stocks in Strong Bullish Phase (💥 4+ Mentions)")
-                 # Convert the Series to a DataFrame
-                 # Rename columns for clarity
-                recurring_stocks_2.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
+
                  # Display the DataFrame as a table
                 st.dataframe(
-                    recurring_stocks_2,
+                    display_df_strong,
                      column_config={
                         "Symbol": st.column_config.TextColumn("Symbol"),
                         "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
                         "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
-                        "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
+                        "First_Day_Price": st.column_config.NumberColumn("First Day Price", format="%.2f", width=150),
+                        "Today_Price": st.column_config.NumberColumn("Today's Price", format="%.2f", width=150),
+                        "% Gain": st.column_config.TextColumn("% Gain", width=100),
                     },
                     hide_index=True, # Hide the default DataFrame index
                     use_container_width=True # Use full width
