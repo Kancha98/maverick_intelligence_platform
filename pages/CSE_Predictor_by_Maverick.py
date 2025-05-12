@@ -287,10 +287,15 @@ try:
             st.markdown("Conversely, stocks with **5 or more mentions** might be further into their uptrend, where significant appreciation may have already occurred.")
            
             if not tier_2_picks_final.empty:
-                recurring_stocks_1 = tier_2_picks_final['Symbol'].value_counts()
-                recurring_stocks_2 = tier_2_picks_final['Symbol'].value_counts()
-                recurring_stocks_1 = recurring_stocks_1[(recurring_stocks_1 >= 2) & (recurring_stocks_1 <= 3)]
-                recurring_stocks_2 = recurring_stocks_1[ (recurring_stocks_1 >= 4)]
+                
+                recurring_data = tier_2_picks_final.groupby('Symbol').agg(
+                    Mentions=('Symbol', 'size'),
+                    First_Detected_Date=('Date','min'),
+                    Today_Price=('Today Closing Price', 'last')
+                ).reset_index()
+                
+                recurring_stocks_1 = recurring_data[(recurring_data['Mentions'] >= 2) & (recurring_data['Mentions'] <= 3)]
+                recurring_stocks_2 = recurring_data[recurring_data['Mentions'] >= 4]
 
             if not recurring_stocks_1.empty:
                 st.markdown("### 🌱 Stocks in Early Bullish Phase (📈 2–3 Mentions)")
@@ -303,7 +308,9 @@ try:
                     early_phase_df,
                     column_config={
                         "Symbol": st.column_config.TextColumn("Symbol", width=100),
-                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times", width=100)
+                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
+                        "First_Detected_Date": st.column_config.DateColumn("First Detected Date", format="YYYY-MM-DD", width=150),
+                        "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
                     },
                     hide_index=True, # Hide the default DataFrame index
                     use_container_width=True # Use full width
@@ -312,10 +319,10 @@ try:
                  # Provide a more informative message if no stocks are found
                 st.info("No stocks found in the early bullish phase (2-3 mentions) for the selected period.")
                  
-            if not recurring_stocks_1.empty:
+            if not recurring_stocks_2.empty:
                 st.markdown("### 🔥 Stocks in Strong Bullish Phase (💥 4+ Mentions)")
                  # Convert the Series to a DataFrame
-                strong_phase_df = recurring_stocks_1.reset_index()
+                strong_phase_df = recurring_stocks_2.reset_index()
                  # Rename columns for clarity
                 strong_phase_df.columns = ['Symbol', 'Mentions']
                  # Display the DataFrame as a table
@@ -323,7 +330,9 @@ try:
                     strong_phase_df,
                      column_config={
                         "Symbol": st.column_config.TextColumn("Symbol"),
-                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times")
+                        "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
+                        "First_Detected_Date": st.column_config.DateColumn("First Detected Date", format="YYYY-MM-DD", width=150),
+                        "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
                     },
                     hide_index=True, # Hide the default DataFrame index
                     use_container_width=True # Use full width
