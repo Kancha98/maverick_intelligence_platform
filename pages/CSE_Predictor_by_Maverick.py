@@ -290,7 +290,7 @@ try:
                 
                 recurring_data = tier_2_picks_final.groupby('Symbol').agg(
                     Mentions=('Symbol', 'size'),
-                    First_Detected_Date=('First Detected Date','min'),
+                    First_Detected_Date=('Date','min'),
                     Today_Price=('Today Closing Price', 'last')
                 ).reset_index()
                 
@@ -302,14 +302,14 @@ try:
                 # Convert the Series to a DataFrame
                 early_phase_df = recurring_stocks_1.reset_index()
                 # Rename columns for clarity
-                early_phase_df.columns = ['Symbol', 'Mentions']
+                early_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
                 # Display the DataFrame as a table
                 st.dataframe(
                     early_phase_df,
                     column_config={
                         "Symbol": st.column_config.TextColumn("Symbol", width=100),
                         "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
-                        "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
+                        "First_Detected_Date": st.column_config.DateColumn("Date", width=150),
                         "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
                     },
                     hide_index=True, # Hide the default DataFrame index
@@ -324,14 +324,14 @@ try:
                  # Convert the Series to a DataFrame
                 strong_phase_df = recurring_stocks_2.reset_index()
                  # Rename columns for clarity
-                strong_phase_df.columns = ['Symbol', 'Mentions']
+                strong_phase_df.columns = ['Symbol', 'Mentions', 'First_Detected_Date', 'Today_Price']
                  # Display the DataFrame as a table
                 st.dataframe(
                     strong_phase_df,
                      column_config={
                         "Symbol": st.column_config.TextColumn("Symbol"),
                         "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
-                        "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
+                        "First_Detected_Date": st.column_config.DateColumn("Date", format="YYYY-MM-DD", width=150),
                         "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
                     },
                     hide_index=True, # Hide the default DataFrame index
