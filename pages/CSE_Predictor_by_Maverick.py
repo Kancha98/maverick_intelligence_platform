@@ -290,7 +290,7 @@ try:
                 
                 recurring_data = tier_2_picks_final.groupby('Symbol').agg(
                     Mentions=('Symbol', 'size'),
-                    First_Detected_Date=('Date','min'),
+                    First_Detected_Date=('First Detected Date','min'),
                     Today_Price=('Today Closing Price', 'last')
                 ).reset_index()
                 
@@ -309,7 +309,7 @@ try:
                     column_config={
                         "Symbol": st.column_config.TextColumn("Symbol", width=100),
                         "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
-                        "First_Detected_Date": st.column_config.DateColumn("Date", width=150),
+                        "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
                         "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
                     },
                     hide_index=True, # Hide the default DataFrame index
@@ -331,7 +331,7 @@ try:
                      column_config={
                         "Symbol": st.column_config.TextColumn("Symbol"),
                         "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
-                        "First_Detected_Date": st.column_config.DateColumn("Date", width=150),
+                        "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
                         "Today_Price": st.column_config.NumberColumn("Today's Price", width=150),
                     },
                     hide_index=True, # Hide the default DataFrame index
