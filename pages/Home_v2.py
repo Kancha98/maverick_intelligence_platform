@@ -9,145 +9,141 @@ st.set_page_config(page_title="CSE Intelligence Platform", layout="wide")
 from auth_utils import get_oauth_client, do_login, do_logout, get_authenticated_user
 
 # Add custom CSS for mobile-friendly design
+# Add this to the top of your home.py file, replacing the current CSS section
+
+# Add custom CSS for mobile-friendly design - with !important flags to override defaults
 st.markdown("""
 <style>
-    /* Mobile-first styles */
-    @media (max-width: 768px) {
-        /* General Layout */
-        .stApp {
-            padding: 0.5rem !important;
-        }
-        
-        /* Typography */
-        h1 {
-            font-size: 1.5rem !important;
-            line-height: 1.3 !important;
-            margin-bottom: 0.75rem !important;
-        }
-        
-        h2, h3 {
-            font-size: 1.25rem !important;
-            margin-top: 1rem !important;
-            margin-bottom: 0.5rem !important;
-        }
-        
-        p, li {
-            font-size: 0.9rem !important;
-            line-height: 1.4 !important;
-        }
-        
-        /* Hide sidebar by default on mobile */
-        [data-testid="stSidebar"] {
-            display: none !important;
-        }
-        
-        /* Action cards */
-        .action-card {
-            background-color: rgba(30, 33, 48, 0.8);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: transform 0.2s;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .action-card:active {
-            transform: scale(0.98);
-        }
-        
-        .action-card h4 {
-            margin: 0 0 5px 0;
-            font-size: 1rem;
-        }
-        
-        .action-card p {
-            margin: 0;
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        /* Bottom Navigation */
-        .mobile-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: #1e2130;
-            display: flex;
-            justify-content: space-around;
-            padding: 8px 0;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-        }
-        
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.7rem;
-            padding: 5px 0;
-        }
-        
-        .nav-item.active {
-            color: #4CAF50;
-        }
-        
-        .nav-icon {
-            font-size: 1.2rem;
-            margin-bottom: 2px;
-        }
-        
-        /* User profile card */
-        .user-profile {
-            display: flex;
-            align-items: center;
-            background-color: rgba(30, 33, 48, 0.5);
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: #4CAF50;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 10px;
-            font-weight: bold;
-            color: white;
-        }
-        
-        .user-info {
-            flex: 1;
-        }
-        
-        .user-name {
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-        
-        .user-email {
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        /* Improved spacing */
-        .block-container {
-            padding-top: 1rem !important;
-            padding-bottom: 6rem !important; /* Space for bottom nav */
-        }
-        
-        /* Make buttons more touch-friendly */
-        button, .stButton>button {
-            min-height: 44px !important;
-            min-width: 44px !important;
-            padding: 10px 15px !important;
-        }
+    /* Mobile-first styles with !important to ensure they take precedence */
+    .stApp {
+        padding: 0.5rem !important;
+    }
+    
+    h1 {
+        font-size: 1.5rem !important;
+        line-height: 1.3 !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    h2, h3 {
+        font-size: 1.25rem !important;
+        margin-top: 1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    p, li {
+        font-size: 0.9rem !important;
+        line-height: 1.4 !important;
+    }
+    
+    /* Action cards */
+    .action-card {
+        background-color: rgba(30, 33, 48, 0.8) !important;
+        border-radius: 8px !important;
+        padding: 15px !important;
+        margin-bottom: 10px !important;
+        cursor: pointer !important;
+        transition: transform 0.2s !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        display: block !important;
+    }
+    
+    .action-card:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    .action-card h4 {
+        margin: 0 0 5px 0 !important;
+        font-size: 1rem !important;
+    }
+    
+    .action-card p {
+        margin: 0 !important;
+        font-size: 0.85rem !important;
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    
+    /* Bottom Navigation - Fixed positioning */
+    .mobile-nav {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        background-color: #1e2130 !important;
+        display: flex !important;
+        justify-content: space-around !important;
+        padding: 8px 0 !important;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2) !important;
+        z-index: 9999 !important;
+    }
+    
+    .nav-item {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        color: rgba(255, 255, 255, 0.7) !important;
+        font-size: 0.7rem !important;
+        padding: 5px 0 !important;
+        text-decoration: none !important;
+    }
+    
+    .nav-item.active {
+        color: #4CAF50 !important;
+    }
+    
+    .nav-icon {
+        font-size: 1.2rem !important;
+        margin-bottom: 2px !important;
+    }
+    
+    /* User profile card */
+    .user-profile {
+        display: flex !important;
+        align-items: center !important;
+        background-color: rgba(30, 33, 48, 0.5) !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+        margin-bottom: 15px !important;
+    }
+    
+    .user-avatar {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 50% !important;
+        background-color: #4CAF50 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-right: 10px !important;
+        font-weight: bold !important;
+        color: white !important;
+    }
+    
+    .user-info {
+        flex: 1 !important;
+    }
+    
+    .user-name {
+        font-weight: bold !important;
+        font-size: 0.9rem !important;
+    }
+    
+    .user-email {
+        font-size: 0.8rem !important;
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    
+    /* Make buttons more touch-friendly */
+    button, .stButton>button {
+        min-height: 44px !important;
+        min-width: 44px !important;
+        padding: 10px 15px !important;
+    }
+    
+    /* Add padding at the bottom for the fixed navigation */
+    .main .block-container {
+        padding-bottom: 70px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -189,33 +185,42 @@ else:
     # Action cards instead of bullet points
     st.markdown("<h3>Quick Actions</h3>", unsafe_allow_html=True)
     
-    # Create clickable cards for each action
+    # Replace the action cards section with this code
+
+# Create columns for each action card to ensure proper layout
+col1, col2 = st.columns(2)
+with col1:
     st.markdown("""
     <a href="/cse_predictor" style="text-decoration: none; color: inherit;">
         <div class="action-card">
             <h4>📈 Stock Predictor</h4>
-            <p>Discover high-potential stocks with AI-powered analysis</p>
+            <p>Discover high-potential stocks</p>
         </div>
     </a>
+    """, unsafe_allow_html=True)
     
-    <a href="/technical_analysis" style="text-decoration: none; color: inherit;">
-        <div class="action-card">
-            <h4>📊 Technical Analysis</h4>
-            <p>View detailed charts and technical indicators</p>
-        </div>
-    </a>
-    
+    st.markdown("""
     <a href="/notifications" style="text-decoration: none; color: inherit;">
         <div class="action-card">
             <h4>🔔 Notifications</h4>
-            <p>Stay updated with real-time alerts and notifications</p>
+            <p>Stay updated with alerts</p>
+        </div>
+    </a>
+    """, unsafe_allow_html=True)
+
+with col2:
+    st.markdown("""
+    <a href="/technical_analysis" style="text-decoration: none; color: inherit;">
+        <div class="action-card">
+            <h4>📊 Technical Analysis</h4>
+            <p>View detailed charts</p>
         </div>
     </a>
     
     <a href="/user_account" style="text-decoration: none; color: inherit;">
         <div class="action-card">
             <h4>👤 Account Settings</h4>
-            <p>Manage your profile and preferences</p>
+            <p>Manage your profile</p>
         </div>
     </a>
     """, unsafe_allow_html=True)
@@ -228,40 +233,33 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
-    # Compact footer
-    st.markdown("""
-    <div style="margin-top: 2rem; text-align: center; font-size: 0.8rem; color: rgba(255,255,255,0.6);">
-        <p>🌟 Empowering your decisions with data-driven insights</p>
-        <p style="margin-top: 0.5rem;">Powered by Maverick Intelligence Pvt Ltd</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Add logout button in a more accessible location
-    if st.button("🚪 Logout", key="logout_button"):
-        do_logout()
-    
-    # Bottom navigation for mobile
-    st.markdown("""
-    <div class="mobile-nav">
-        <a href="/" class="nav-item active">
-            <span class="nav-icon">🏠</span>
-            <span>Home</span>
-        </a>
-        <a href="/cse_predictor" class="nav-item">
-            <span class="nav-icon">📈</span>
-            <span>Predictor</span>
-        </a>
-        <a href="/technical_analysis" class="nav-item">
-            <span class="nav-icon">📊</span>
-            <span>Technical</span>
-        </a>
-        <a href="/notifications" class="nav-item">
-            <span class="nav-icon">🔔</span>
-            <span>Alerts</span>
-        </a>
-        <a href="/user_account" class="nav-item">
-            <span class="nav-icon">👤</span>
-            <span>Account</span>
-        </a>
-    </div>
-    """, unsafe_allow_html=True)
+# Add this at the end of your home.py file
+
+# Create a container div with fixed height to ensure content isn't hidden behind the nav bar
+st.markdown('<div style="height: 60px;"></div>', unsafe_allow_html=True)
+
+# Bottom navigation with inline styles
+st.markdown("""
+<div style="position: fixed; bottom: 0; left: 0; right: 0; background-color: #1e2130; display: flex; justify-content: space-around; padding: 8px 0; box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2); z-index: 9999;">
+    <a href="/" style="display: flex; flex-direction: column; align-items: center; color: #4CAF50; font-size: 0.7rem; padding: 5px 0; text-decoration: none;">
+        <span style="font-size: 1.2rem; margin-bottom: 2px;">🏠</span>
+        <span>Home</span>
+    </a>
+    <a href="/cse_predictor" style="display: flex; flex-direction: column; align-items: center; color: rgba(255, 255, 255, 0.7); font-size: 0.7rem; padding: 5px 0; text-decoration: none;">
+        <span style="font-size: 1.2rem; margin-bottom: 2px;">📈</span>
+        <span>Predictor</span>
+    </a>
+    <a href="/technical_analysis" style="display: flex; flex-direction: column; align-items: center; color: rgba(255, 255, 255, 0.7); font-size: 0.7rem; padding: 5px 0; text-decoration: none;">
+        <span style="font-size: 1.2rem; margin-bottom: 2px;">📊</span>
+        <span>Technical</span>
+    </a>
+    <a href="/notifications" style="display: flex; flex-direction: column; align-items: center; color: rgba(255, 255, 255, 0.7); font-size: 0.7rem; padding: 5px 0; text-decoration: none;">
+        <span style="font-size: 1.2rem; margin-bottom: 2px;">🔔</span>
+        <span>Alerts</span>
+    </a>
+    <a href="/user_account" style="display: flex; flex-direction: column; align-items: center; color: rgba(255, 255, 255, 0.7); font-size: 0.7rem; padding: 5px 0; text-decoration: none;">
+        <span style="font-size: 1.2rem; margin-bottom: 2px;">👤</span>
+        <span>Account</span>
+    </a>
+</div>
+""", unsafe_allow_html=True)
