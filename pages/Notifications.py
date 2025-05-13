@@ -47,6 +47,7 @@ def insert_user_data(conn, phone_number, username, index_value):
     """Inserts user data into the database. ✍️"""
     if conn is None:
         return False
+    cursor = None  # Declare early to ensure safe closure
     try:
         cursor = conn.cursor()
         sql_check = "SELECT 1 FROM notification_ids WHERE phone_number = %s AND index_value = %s;"
@@ -69,7 +70,7 @@ def insert_user_data(conn, phone_number, username, index_value):
         st.error(f"Error inserting data: {e} ⚠️")
         return False
     finally:
-        if conn:
+        if cursor:
             cursor.close()
 
 
@@ -127,8 +128,6 @@ def main():
             )
         else:
             insert_user_data(conn, phone_number, username, index_value)
-        if conn:
-            conn.close()
             
     st.info(
             "🔔 Heads up!\n\nYou're on a 30-day free trial. To keep receiving timely stock alerts, subscribe to a plan.\n\nNeed help? Contact the Maverick Intelligence Team anytime!"

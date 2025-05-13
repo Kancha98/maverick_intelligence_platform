@@ -139,7 +139,6 @@ def load_data():
 
 
 def get_mavericks_picks(results_df):
-    """Filters stocks for Mavericks Picks based on Tier 1, Tier 2, and Tier 3 conditions."""
     # Ensure numeric columns are properly typed before applying conditions
     numeric_cols_for_conditions = ['turnover', 'volume', 'relative_strength']
     for col in numeric_cols_for_conditions:

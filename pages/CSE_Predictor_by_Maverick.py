@@ -328,7 +328,7 @@ try:
                 "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
                 "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
                 "First_Day_Price": st.column_config.NumberColumn("First Day Price", format="%.2f", width=150),
-                "Today_Price": st.column_config.NumberColumn("Today's Price", format="%.2f", width=150),
+                "Today_Price": st.column_config.NumberColumn("Latest Price", format="%.2f", width=150),
                 "% Gain": st.column_config.NumberColumn("% Gain", format="%.2f%%", width=100),
                 },
                     hide_index=True, # Hide the default DataFrame index
@@ -364,7 +364,7 @@ try:
                         "Mentions": st.column_config.NumberColumn("Mentions", format="%d times"),
                         "First_Detected_Date": st.column_config.DateColumn("First Detected Date", width=150),
                         "First_Day_Price": st.column_config.NumberColumn("First Day Price", format="%.2f", width=150),
-                        "Today_Price": st.column_config.NumberColumn("Today's Price", format="%.2f", width=150),
+                        "Today_Price": st.column_config.NumberColumn("Latest Price", format="%.2f", width=150),
                         "% Gain": st.column_config.TextColumn("% Gain", width=100),
                     },
                     hide_index=True, # Hide the default DataFrame index
