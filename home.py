@@ -63,6 +63,27 @@ else:
         ---
         🌟 *Empowering your decisions with data-driven insights.*  
         🚀 *Let's achieve greatness together!*
+        
         """
+    )
+    
+    # ---  Footer  ---
+    st.markdown(
+        """
+        <style>
+        footer {
+            margin-top: 2em;
+            text-align: center;
+            color: #7f8c8d;  /* Muted footer text color */
+            font-size: 0.9em;
+            padding-top: 1em;
+            border-top: 1px solid #e0e0e0; /* Subtle top border */
+        }
+        </style>
+        <footer>
+            Powered by Maverick Intelligence Pvt Ltd | mavrickintel.com 
+        </footer>
+        """,
+        unsafe_allow_html=True,
     )
     
