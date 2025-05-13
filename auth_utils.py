@@ -6,7 +6,7 @@ import requests
 import json
 import base64
 from datetime import datetime, timedelta
-from streamlit_js_eval import st_javascript  # Import streamlit_js_eval
+from streamlit_js_eval import streamlit_js_eval
 
 # ─────────────────────────────────────────────────────────────
 # 🔒 Helper Functions for Cookie Management
@@ -18,7 +18,7 @@ def set_cookie(name, value, days=1):
     expire_date = (datetime.utcnow() + timedelta(days=days)).strftime("%a, %d %b %Y %H:%M:%S GMT")
 
     # Using JS Eval to set the cookie
-    st_javascript(f"""
+    streamlit_js_eval(f"""
         document.cookie = "{name}={encoded}; path=/; expires={expire_date}; SameSite=Lax";
         window.parent.postMessage({{streamlitCookieSet: true}}, "*");
     """)
@@ -26,7 +26,7 @@ def set_cookie(name, value, days=1):
 def get_cookie(name):
     """Trigger browser to read the cookie and post back to parent."""
     # Using JS Eval to get the cookie
-    st_javascript(f"""
+    streamlit_js_eval(f"""
         const cookieName = "{name}";
         const cookies = document.cookie.split("; ");
         const cookie = cookies.find(row => row.startsWith(cookieName + "="));
@@ -37,7 +37,7 @@ def get_cookie(name):
 def clear_cookie(name):
     """Clear cookie by setting it to expire in the past."""
     # Using JS Eval to clear the cookie
-    st_javascript(f"""
+    streamlit_js_eval(f"""
         document.cookie = "{name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         window.location.reload();
     """)
@@ -53,7 +53,7 @@ def decode_cookie_value():
         st.session_state.user_info = None
 
         # Setup listener for decoding
-        st_javascript("""
+        streamlit_js_eval("""
         window.addEventListener("message", (event) => {
             if (event.data?.streamlitCookie) {
                 const payload = event.data.streamlitCookie;
