@@ -21,7 +21,7 @@ def set_cookie(name, value, days=1):
     streamlit_js_eval(f"""
         document.cookie = "{name}={encoded}; path=/; expires={expire_date}; SameSite=Lax";
         window.parent.postMessage({{streamlitCookieSet: true}}, "*");
-    """)
+    """,label=f"set_cookie_{name}") # Add this label argument
 
 def get_cookie(name):
     """Trigger browser to read the cookie and post back to parent."""
@@ -32,7 +32,7 @@ def get_cookie(name):
         const cookie = cookies.find(row => row.startsWith(cookieName + "="));
         const value = cookie ? cookie.split('=')[1] : "";
         window.parent.postMessage({{streamlitCookie: value}}, "*");
-    """)
+   """,label=f"set_cookie_{name}") # Add this label argument
 
 def clear_cookie(name):
     """Clear cookie by setting it to expire in the past."""
@@ -40,7 +40,7 @@ def clear_cookie(name):
     streamlit_js_eval(f"""
         document.cookie = "{name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         window.location.reload();
-    """)
+    """,label=f"set_cookie_{name}") # Add this label argument
 
 # ─────────────────────────────────────────────────────────────
 # 👤 User Authentication Logic
@@ -52,7 +52,7 @@ def decode_cookie_value():
         st.session_state.cookie_checked = False
         st.session_state.user_info = None
 
-        # Setup listener for decoding
+        # Setup listener for decoding - Added label
         streamlit_js_eval("""
         window.addEventListener("message", (event) => {
             if (event.data?.streamlitCookie) {
@@ -60,7 +60,7 @@ def decode_cookie_value():
                 window.parent.postMessage({streamlitCookieDecoded: payload}, "*");
             }
         });
-        """)
+        """, label="decode_cookie_listener") # Added a unique label
 
         get_cookie("user_info")
 
@@ -281,6 +281,11 @@ def get_authenticated_user():
     user_info = handle_cookie_callback()  # ✅ Use this instead of calling itself
 
     return st.session_state.get('user_info') if st.session_state.get('logged_in') else None
+
+# Initialize the OAuth client once per session
+if 'oauth_client' not in st.session_state:
+    st.session_state.oauth_client = get_oauth_client()
+oauth_client = st.session_state.oauth_client
 
 
 # === Main execution ===
