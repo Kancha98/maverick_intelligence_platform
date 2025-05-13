@@ -66,9 +66,21 @@ def insert_user_data(conn, phone_number, username, index_value):
             f"Successfully Subscribed! Lets Go!!. Phone Number: +{index_value}{phone_number} 🎉"
         )
         return True
+    
+    except psycopg2.InterfaceError:
+        # Connection was closed — reconnect and retry
+        st.warning("Database connection was closed. Attempting to reconnect... 🔄")
+        conn = init_connection()
+        return insert_user_data(conn, phone_number, username, index_value)
+    
+    
     except Exception as e:
         st.error(f"Error inserting data: {e} ⚠️")
         return False
+    
+    finally:
+        if cursor:
+            cursor.close()
 
 
 # --- Main App Function ---
