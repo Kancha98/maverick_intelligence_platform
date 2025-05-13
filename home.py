@@ -1,3 +1,4 @@
+# home.py
 import streamlit as st
 import psycopg2  # Import the psycopg2 library
 from urllib.parse import urlparse
@@ -8,6 +9,7 @@ from auth_utils import get_oauth_client, do_login, do_logout, get_authenticated_
 
 # Set the page configuration for the entire app
 
+
 # Welcome Title
 st.title("🌟 Welcome to the **CSE Intelligence Platform** by Maverick 🚀")
 
@@ -16,9 +18,10 @@ oauth_client = get_oauth_client()
 user_info = get_authenticated_user()
 
 if not user_info:
-    # User is not logged in, show login message
+    # User is not logged in, show login button
     st.info("🔒 **Please log in to access the dashboards.**")
     st.markdown("👤 *Your personalized analytics experience awaits!*")
+    do_login(oauth_client)  # This function handles the OAuth flow and reruns
 
 else:
     # User is logged in, display content for authenticated users
@@ -42,10 +45,11 @@ else:
         """
     )
     
-    st.markdown(""" 
---- 
-🙏 If you find this information helpful and want to support my work, please consider [supporting me on Patreon](https://www.patreon.com/c/CSEMaverick) 💚 
+    st.markdown("""
+---
+🙏 If you find this information helpful and want to support my work, please consider [supporting me on Patreon](https://www.patreon.com/c/CSEMaverick) 💚
 """)
+
 
     st.subheader("✨ **Your Google Account Details**")
     st.write(f"👤 **Name:** {user_name}")
@@ -59,10 +63,11 @@ else:
         ---
         🌟 *Empowering your decisions with data-driven insights.*  
         🚀 *Let's achieve greatness together!*
+        
         """
     )
     
-    # --- Footer ---
+    # ---  Footer  ---
     st.markdown(
         """
         <style>
@@ -81,3 +86,4 @@ else:
         """,
         unsafe_allow_html=True,
     )
+    
