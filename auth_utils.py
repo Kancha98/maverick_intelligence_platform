@@ -3,7 +3,33 @@ from streamlit_oauth import OAuth2
 import yaml
 import os
 import requests
+import json
+import base64
 
+def load_user_from_cookie():
+    encoded = st.experimental_get_cookie("user_info")
+    if encoded:
+        try:
+             
+            user_data = json.loads(base64.b64decode(encoded).decode())
+            
+            
+            if user_data and "email" in user_data:
+                st.session_state['user_info'] = user_data
+                st.session_state['logged_in'] = True
+            else:
+                st.warning("User data is incomplete or missing the email.")
+            
+            
+        except Exception as e:
+            st.warning(f"Failed to load user from cookie: {e}")
+
+
+def store_user_cookie(user_data):
+    # Convert dict to base64-encoded string (simple obfuscation)
+    encoded = base64.b64encode(json.dumps(user_data).encode()).decode()
+    st.experimental_set_cookie("user_info", encoded, max_age=14*24*60*60) # 14 days
+    
 def get_oauth_client():
     """
     Initializes and returns the OAuth2 client using configuration from config.yaml
@@ -49,6 +75,16 @@ def do_login(oauth_client):
     # 1. Check if user is already logged in via session state
     if 'user_info' in st.session_state and st.session_state.get('logged_in', False):
         return st.session_state['user_info']
+    
+    if "user_info" not in st.session_state:
+        token = oauth_client.authorize_access_token()
+        user = oauth_client.parse_id_token(token)
+
+        if user:
+            st.session_state.user_info = user               # ✅ Store in session
+            store_user_cookie(user)                         # ✅ Store in cookie
+            st.success(f"Welcome, {user.get('name')}!")
+            st.rerun()  # rerun to reflect authenticated state
 
     # 2. Load configuration needed for login flow (scopes, redirect_uri, user_info_endpoint)
     # Read config inside the function if it's needed here and not fully loaded globally
@@ -187,6 +223,7 @@ def do_logout():
     """
     st.session_state.pop('user_info', None)
     st.session_state.pop('logged_in', None)
+    st.experimental_set_cookie("user_info", "", max_age=0)  # ❌ Clear cookie
     st.rerun()
 
 def get_authenticated_user():
@@ -196,6 +233,8 @@ def get_authenticated_user():
     return st.session_state.get('user_info') if st.session_state.get('logged_in') else None
 
 # === Main execution ===
+
+load_user_from_cookie()
 
 user_info = get_authenticated_user()
 
