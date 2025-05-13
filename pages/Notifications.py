@@ -4,15 +4,6 @@ import os
 from urllib.parse import urlparse
 from auth_utils import get_authenticated_user # Import the authentication helper
 
-# --- Authentication Check ---
-# This check is crucial for every page that requires authentication.
-user_info = get_authenticated_user()
-if not user_info:
-    # If the user is not logged in, show a warning and stop execution of this page
-    st.warning("Please log in to view this page. 🔑")
-    st.stop()  # This stops the script execution for this specific page
-
-
 # --- Helper Functions ---
 def create_connection():
     """Initializes and caches the database connection. 🔗"""
@@ -107,6 +98,10 @@ def main():
         "Stay informed with our Timely Intelligent Alerts! 📢 "
         "Please enter your phone number and username to subscribe. 📝"
     )
+    
+    st.info(
+    "📊 **Tip:** Click the top left arrow '>' to  open the sidebar and discover your **Personalized Analytics Hub** — access  stock insights & more! 🚀"
+)
 
     # --- Input Fields with Improved Styling ---
     index_value = st.text_input(
