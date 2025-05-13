@@ -3,32 +3,35 @@ from streamlit_oauth import OAuth2
 import yaml
 import os
 import requests
+from streamlit_cookies_manager import CookiesManager
 import json
 import base64
 
+# Create the cookie manager object
+cookies = CookiesManager()
+
 def load_user_from_cookie():
-    encoded = st.experimental_get_cookie("user_info")
+    """
+    Load user information from the cookies
+    """
+    encoded = cookies.get('user_info')
     if encoded:
         try:
-             
             user_data = json.loads(base64.b64decode(encoded).decode())
-            
-            
             if user_data and "email" in user_data:
                 st.session_state['user_info'] = user_data
                 st.session_state['logged_in'] = True
             else:
                 st.warning("User data is incomplete or missing the email.")
-            
-            
         except Exception as e:
             st.warning(f"Failed to load user from cookie: {e}")
 
-
 def store_user_cookie(user_data):
-    # Convert dict to base64-encoded string (simple obfuscation)
+    """
+    Store user data in cookies
+    """
     encoded = base64.b64encode(json.dumps(user_data).encode()).decode()
-    st.experimental_set_cookie("user_info", encoded, max_age=14*24*60*60) # 14 days
+    cookies.set('user_info', encoded, expires=14*24*60*60)  # 14 days
     
 def get_oauth_client():
     """
@@ -237,6 +240,10 @@ def get_authenticated_user():
 load_user_from_cookie()
 
 user_info = get_authenticated_user()
+
+if 'user_info' in st.session_state:
+    # Process user data
+    st.write("Welcome back!", st.session_state['user_info'])
 
 if not user_info:
     do_login(oauth_client)
