@@ -19,7 +19,8 @@ user_info = get_authenticated_user()
 
 # If user is not logged in, show a warning and stop execution of this page
 if not user_info:
-    st.warning("Please log in to view this page.")
+    st.warning("🔒 Please log in to view this page.\n\n👉 Visit the **Home Page** to log in and access this analytics dashboard.")
+
     st.stop() # This stops the script execution for this specific page
 
 # User is logged in, get their email (optional, but good practice)
