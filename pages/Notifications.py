@@ -69,9 +69,6 @@ def insert_user_data(conn, phone_number, username, index_value):
     except Exception as e:
         st.error(f"Error inserting data: {e} ⚠️")
         return False
-    finally:
-        if cursor:
-            cursor.close()
 
 
 # --- Main App Function ---
