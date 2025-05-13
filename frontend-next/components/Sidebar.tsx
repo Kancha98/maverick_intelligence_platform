@@ -7,94 +7,116 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  ListItemButton,
   Divider,
   Box,
+  IconButton,
+  Typography,
+  Button,
+  Link,
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
-  TrendingUp as TrendingUpIcon,
-  Assessment as AssessmentIcon,
-  AccountBalance as AccountBalanceIcon,
-  School as SchoolIcon,
-  Help as HelpIcon,
+  Home,
+  BarChart,
+  Book,
+  Notifications,
+  AccountCircle,
+  MenuBook,
+  Logout,
+  ChevronLeft as ChevronLeftIcon,
 } from '@mui/icons-material';
 import { usePathname, useRouter } from 'next/navigation';
-import { styled } from '@mui/material/styles';
 
-const drawerWidth = 240;
+const drawerWidth = 270;
 
-const StyledDrawer = styled(Drawer)({
-  width: drawerWidth,
-  flexShrink: 0,
-  '& .MuiDrawer-paper': {
-    width: drawerWidth,
-    boxSizing: 'border-box',
-    backgroundColor: '#ffffff',
-    borderRight: '1px solid rgba(0, 0, 0, 0.12)',
-  },
-});
-
-const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { text: 'Market Analysis', icon: <TrendingUpIcon />, path: '/market-analysis' },
-  { text: 'Portfolio', icon: <AssessmentIcon />, path: '/portfolio' },
-  { text: 'Trading Tools', icon: <AccountBalanceIcon />, path: '/trading-tools' },
-  { text: 'Learning Center', icon: <SchoolIcon />, path: '/learning' },
+const navLinks = [
+  { icon: <Home />, label: 'Home', path: '/' },
+  { icon: <BarChart />, label: 'CSE Predictor by Maverick', path: '/cse-predictor' },
+  { icon: <MenuBook />, label: 'Fundamental Analysis', path: '/fundamental-analysis' },
+  { icon: <BarChart />, label: 'Technical Analysis', path: '/technical-analysis' },
+  { icon: <Book />, label: 'Guide', path: '/guide' },
+  { icon: <Notifications />, label: 'Notifications', path: '/notifications' },
+  { icon: <AccountCircle />, label: 'User account', path: '/account' },
 ];
 
-const Sidebar = () => {
+const PlaceholderLogo = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 2 }}>
+    <img src="/logo.png" alt="Maverick Intelligence Logo" style={{ width: 44, height: 44, borderRadius: 10 }} />
+  </Box>
+);
+
+interface SidebarProps {
+  open: boolean;
+  onClose: () => void;
+  isDesktop: boolean;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ open, onClose, isDesktop }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  return (
-    <StyledDrawer variant="permanent">
-      <Box sx={{ overflow: 'auto', mt: 8 }}>
-        <List>
-          {menuItems.map((item) => (
-            <ListItem key={item.text} disablePadding>
-              <ListItemButton
-                selected={pathname === item.path}
-                onClick={() => router.push(item.path)}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(25, 118, 210, 0.12)',
-                    },
-                  },
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    color: pathname === item.path ? '#1976d2' : 'inherit',
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  sx={{
-                    color: pathname === item.path ? '#1976d2' : 'inherit',
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-        <Divider />
-        <List>
-          <ListItem disablePadding>
-            <ListItemButton>
-              <ListItemIcon>
-                <HelpIcon />
-              </ListItemIcon>
-              <ListItemText primary="Help & Support" />
-            </ListItemButton>
-          </ListItem>
-        </List>
+  const drawer = (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Roboto, Arial, sans-serif', bgcolor: 'background.paper' }}>
+      <Box sx={{ px: 2, pt: 2, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <PlaceholderLogo />
+        <Typography variant="h6" fontWeight={700} sx={{ ml: 1, fontFamily: 'Roboto, Arial, sans-serif' }}>Maverick Intelligence</Typography>
+        <IconButton onClick={onClose} sx={{ ml: 'auto', display: { xs: 'inline-flex', md: 'inline-flex' } }}>
+          <ChevronLeftIcon />
+        </IconButton>
       </Box>
-    </StyledDrawer>
+      <Divider sx={{ mb: 1 }} />
+      <List sx={{ flexGrow: 1 }}>
+        {navLinks.map((item) => (
+          <ListItem button key={item.label} component={Link} href={item.path} sx={{ borderRadius: 2, mb: 0.5, mx: 1, bgcolor: pathname === item.path ? 'rgba(0,184,107,0.08)' : 'inherit' }}>
+            <ListItemIcon sx={{ color: 'text.secondary' }}>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.label} primaryTypographyProps={{ fontFamily: 'Roboto, Arial, sans-serif', fontWeight: item.label === 'Home' ? 700 : 400 }} />
+          </ListItem>
+        ))}
+      </List>
+      <Divider sx={{ my: 1 }} />
+      <Box sx={{ px: 2, pb: 2, fontFamily: 'Roboto, Arial, sans-serif' }}>
+        <Button variant="text" color="warning" fullWidth startIcon={<Logout />} sx={{ fontWeight: 700, borderRadius: 2, fontFamily: 'Roboto, Arial, sans-serif', textTransform: 'none' }} onClick={() => router.push('/api/auth/signout')}>
+          Logout
+        </Button>
+      </Box>
+    </Box>
+  );
+
+  return isDesktop ? (
+    <Drawer
+      variant="persistent"
+      open={open}
+      sx={{
+        width: open ? drawerWidth : 0,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': {
+          width: drawerWidth,
+          boxSizing: 'border-box',
+          bgcolor: 'background.paper',
+          transition: 'width 0.3s',
+          overflowX: 'hidden',
+          display: open ? 'block' : 'none',
+        },
+        display: open ? 'block' : 'none',
+      }}
+    >
+      {drawer}
+    </Drawer>
+  ) : (
+    <Drawer
+      variant="temporary"
+      open={open}
+      onClose={onClose}
+      ModalProps={{ keepMounted: true }}
+      sx={{
+        '& .MuiDrawer-paper': {
+          width: drawerWidth,
+          boxSizing: 'border-box',
+          bgcolor: 'background.paper',
+        },
+      }}
+    >
+      {drawer}
+    </Drawer>
   );
 };
 

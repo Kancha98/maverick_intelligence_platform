@@ -8,18 +8,10 @@ import { Home, BarChart, Book, Notifications, AccountCircle, MenuBook, Logout, I
 import { useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import Sidebar from '../components/Sidebar';
+import { navLinks } from '../components/navLinks';
 
 const drawerWidth = 270;
-
-const navLinks = [
-  { icon: <Home />, label: 'Home' },
-  { icon: <BarChart />, label: 'CSE Predictor by Maverick' },
-  { icon: <MenuBook />, label: 'Fundamental Analysis' },
-  { icon: <BarChart />, label: 'Technical Analysis' },
-  { icon: <Book />, label: 'Guide' },
-  { icon: <Notifications />, label: 'Notifications' },
-  { icon: <AccountCircle />, label: 'User account' },
-];
 
 const PlaceholderLogo = () => (
   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 2 }}>
@@ -135,79 +127,9 @@ export default function DashboardPage() {
     );
   }
 
-  // Sidebar content
-  const drawer = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Roboto, Arial, sans-serif', bgcolor: 'background.paper' }}>
-      <Box sx={{ px: 2, pt: 2, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <PlaceholderLogo />
-        <Typography variant="h6" fontWeight={700} sx={{ ml: 1, fontFamily: 'Roboto, Arial, sans-serif' }}>Maverick Intelligence</Typography>
-        <IconButton onClick={() => setDrawerOpen(false)} sx={{ ml: 'auto', display: { xs: 'inline-flex', md: 'inline-flex' } }}>
-          <ChevronLeftIcon />
-        </IconButton>
-      </Box>
-      <Divider sx={{ mb: 1 }} />
-      <List sx={{ flexGrow: 1 }}>
-        {navLinks.map((item, idx) => (
-          <ListItem button key={item.label} sx={{ borderRadius: 2, mb: 0.5, mx: 1 }}>
-            <ListItemIcon sx={{ color: 'text.secondary' }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} primaryTypographyProps={{ fontFamily: 'Roboto, Arial, sans-serif', fontWeight: item.label === 'Home' ? 700 : 400 }} />
-          </ListItem>
-        ))}
-      </List>
-      <Divider sx={{ my: 1 }} />
-      <Box sx={{ px: 2, pb: 2, fontFamily: 'Roboto, Arial, sans-serif' }}>
-        <Button variant="text" color="warning" fullWidth startIcon={<Logout />} onClick={() => signOut()} sx={{ fontWeight: 700, borderRadius: 2, fontFamily: 'Roboto, Arial, sans-serif', textTransform: 'none' }}>
-          Logout
-        </Button>
-      </Box>
-    </Box>
-  );
-
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#fff', fontFamily: 'Roboto, Arial, sans-serif' }}>
-      {/* Sidebar */}
-      {isDesktop ? (
-        <Drawer
-          variant="persistent"
-          open={drawerOpen}
-          sx={{
-            width: drawerOpen ? drawerWidth : 0,
-            flexShrink: 0,
-            '& .MuiDrawer-paper': {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-              bgcolor: 'background.paper',
-              transition: theme.transitions.create('width', {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
-              overflowX: 'hidden',
-              display: drawerOpen ? 'block' : 'none',
-            },
-            display: drawerOpen ? 'block' : 'none',
-          }}
-        >
-          {drawer}
-        </Drawer>
-      ) : (
-        <Drawer
-          variant="temporary"
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            '& .MuiDrawer-paper': {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-              bgcolor: 'background.paper',
-            },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      )}
-
-      {/* Main Content */}
+      <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} isDesktop={isDesktop} />
       <Box
         sx={{
           flexGrow: 1,
@@ -225,7 +147,6 @@ export default function DashboardPage() {
           overflow: 'hidden',
         }}
       >
-        {/* AppBar for hamburger */}
         <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: 'transparent', boxShadow: 'none', borderBottom: '1px solid #eee' }}>
           <Toolbar>
             {!drawerOpen && (
