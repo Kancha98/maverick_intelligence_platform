@@ -3,6 +3,81 @@ from streamlit_oauth import OAuth2
 import yaml
 import os
 import requests
+import json
+import base64
+from datetime import datetime, timedelta
+from streamlit_js_eval import st_javascript  # Import streamlit_js_eval
+
+# ─────────────────────────────────────────────────────────────
+# 🔒 Helper Functions for Cookie Management
+# ─────────────────────────────────────────────────────────────
+
+def set_cookie(name, value, days=1):
+    """Set a cookie using JS and postMessage."""
+    encoded = base64.b64encode(json.dumps(value).encode()).decode()
+    expire_date = (datetime.utcnow() + timedelta(days=days)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    # Using JS Eval to set the cookie
+    st_javascript(f"""
+        document.cookie = "{name}={encoded}; path=/; expires={expire_date}; SameSite=Lax";
+        window.parent.postMessage({{streamlitCookieSet: true}}, "*");
+    """)
+
+def get_cookie(name):
+    """Trigger browser to read the cookie and post back to parent."""
+    # Using JS Eval to get the cookie
+    st_javascript(f"""
+        const cookieName = "{name}";
+        const cookies = document.cookie.split("; ");
+        const cookie = cookies.find(row => row.startsWith(cookieName + "="));
+        const value = cookie ? cookie.split('=')[1] : "";
+        window.parent.postMessage({{streamlitCookie: value}}, "*");
+    """)
+
+def clear_cookie(name):
+    """Clear cookie by setting it to expire in the past."""
+    # Using JS Eval to clear the cookie
+    st_javascript(f"""
+        document.cookie = "{name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        window.location.reload();
+    """)
+
+# ─────────────────────────────────────────────────────────────
+# 👤 User Authentication Logic
+# ─────────────────────────────────────────────────────────────
+
+def decode_cookie_value():
+    """Insert JS to fetch the cookie and trigger decode on first app load."""
+    if 'cookie_checked' not in st.session_state:
+        st.session_state.cookie_checked = False
+        st.session_state.user_info = None
+
+        # Setup listener for decoding
+        st_javascript("""
+        window.addEventListener("message", (event) => {
+            if (event.data?.streamlitCookie) {
+                const payload = event.data.streamlitCookie;
+                window.parent.postMessage({streamlitCookieDecoded: payload}, "*");
+            }
+        });
+        """)
+
+        get_cookie("user_info")
+
+
+def handle_cookie_callback():
+    """Decode and load cookie value into session state."""
+    if not st.session_state.get("cookie_checked"):
+        event = st.experimental_get_query_params().get("streamlitCookieDecoded", [None])[0]
+        if event:
+            try:
+                decoded = json.loads(base64.b64decode(event))
+                st.session_state.user_info = decoded
+            except:
+                st.session_state.user_info = None
+        st.session_state.cookie_checked = True  
+    
+    return st.session_state.get("user_info")
 
 def get_oauth_client():
     """
@@ -49,6 +124,7 @@ def do_login(oauth_client):
     # 1. Check if user is already logged in via session state
     if 'user_info' in st.session_state and st.session_state.get('logged_in', False):
         return st.session_state['user_info']
+    
 
     # 2. Load configuration needed for login flow (scopes, redirect_uri, user_info_endpoint)
     # Read config inside the function if it's needed here and not fully loaded globally
@@ -149,11 +225,18 @@ def do_login(oauth_client):
                 )
                 user_info_response.raise_for_status() # Raise HTTPError for bad responses
                 user_info = user_info_response.json()
+                
+                # Then set the cookie
+                set_cookie("user_info", user_info)
 
                 # Store user info and login status in session state
                 st.session_state['user_info'] = user_info
                 st.session_state['logged_in'] = True
                 st.success("Successfully authenticated!") # Show success message
+                
+                # ✅ Set cookie after successful login
+                set_cookie("user_info", user_info)
+                st.success(f"✅ Logged in as {user_info['name']}")
 
                 # --- Clear query parameters AFTER successful login ---
                 # This removes the 'code' from the URL after it's used
@@ -193,7 +276,12 @@ def get_authenticated_user():
     """
     Retrieves authenticated user info from session.
     """
+    oauth_client = get_oauth_client()
+    decode_cookie_value()
+    user_info = handle_cookie_callback()  # ✅ Use this instead of calling itself
+
     return st.session_state.get('user_info') if st.session_state.get('logged_in') else None
+
 
 # === Main execution ===
 
