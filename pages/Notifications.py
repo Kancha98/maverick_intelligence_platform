@@ -37,16 +37,16 @@ def create_connection():
         st.error(f"Failed to connect to database: {e} ⚠️")
         return None
 
-
-@st.cache_resource
-def init_connection():
-    return create_connection()
-
-
-def insert_user_data(conn, phone_number, username, index_value):
+def insert_user_data(conn, phone_number, username, index_value, retries=1):
     """Inserts user data into the database. ✍️"""
-    if conn is None:
-        return False
+    if conn is None or conn.closed:
+        if retries > 3:
+            st.error("⚠️ Failed to reconnect after multiple attempts.")
+            return False
+        st.warning("Database connection was closed. Attempting to reconnect... 🔄")
+        conn = create_connection()
+        return insert_user_data(conn, phone_number, username, index_value, retries + 1)
+    
     cursor = None  # Declare early to ensure safe closure
     try:
         cursor = conn.cursor()
@@ -70,7 +70,7 @@ def insert_user_data(conn, phone_number, username, index_value):
     except psycopg2.InterfaceError:
         # Connection was closed — reconnect and retry
         st.warning("Database connection was closed. Attempting to reconnect... 🔄")
-        conn = init_connection()
+        conn = create_connection()
         return insert_user_data(conn, phone_number, username, index_value)
     
     
@@ -123,7 +123,7 @@ def main():
     )
 
     # --- Input Validation and Database Interaction ---
-    conn = init_connection()  # Get connection
+    conn = create_connection() # Get connection
     if st.button("Subscribe to Alerts 🚀"):  # Changed button text for clarity
         if not phone_number or not username or not index_value:
             st.warning("Please enter your country code, phone number, and username. ❌")
