@@ -134,11 +134,20 @@ export default function DashboardPage() {
       <Box sx={{ flexGrow: 1, width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f7fafc' }}>
         {/* Top Bar */}
         <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: 'white', boxShadow: 'none', borderBottom: '1px solid #eee', px: 2 }}>
-          <Toolbar sx={{ justifyContent: 'flex-end', gap: 2 }}>
-            <Button startIcon={<AccountCircle />} sx={{ textTransform: 'none', fontWeight: 700, color: '#222' }}>Account</Button>
-            <Button variant="contained" sx={{ textTransform: 'none', fontWeight: 700, bgcolor: '#2563eb', color: '#fff', borderRadius: 2, px: 2, '&:hover': { bgcolor: '#1d4ed8' } }}>
-              $ Premium Access
-            </Button>
+          <Toolbar sx={{ justifyContent: 'space-between', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {!drawerOpen && (
+                <IconButton edge="start" aria-label="menu" onClick={() => setDrawerOpen(true)} sx={{ color: '#000', mr: 2 }}>
+                  <MenuIcon />
+                </IconButton>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button startIcon={<AccountCircle />} sx={{ textTransform: 'none', fontWeight: 700, color: '#222' }}>Account</Button>
+              <Button variant="contained" sx={{ textTransform: 'none', fontWeight: 700, bgcolor: '#2563eb', color: '#fff', borderRadius: 2, px: 2, '&:hover': { bgcolor: '#1d4ed8' } }}>
+                $ Premium Access
+              </Button>
+            </Box>
           </Toolbar>
         </AppBar>
         {/* Hero Section */}
