@@ -598,14 +598,16 @@ export default function TechnicalAnalysisPage() {
           {/* Introduction */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h5" fontWeight={700} gutterBottom>
-              🧭 AI Market Technical Navigator
+              🧭Technical Navigator
             </Typography>
-            <Typography variant="body1" color="text.secondary" gutterBottom>
+            <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
               An intelligent assistant to help you discover high-potential stocks by leveraging technical analysis tools!
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Note: This app is for Research purposes only. Please do your own research before making any investment decisions.
-            </Typography>
+            <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
+              <Typography variant="body2">
+                <strong>Note:</strong> This app is for Research purposes only. Please do your own research before making any investment decisions.
+              </Typography>
+            </Alert>
             <Divider />
           </Box>
           
@@ -653,6 +655,13 @@ export default function TechnicalAnalysisPage() {
                 </Grid>
               </CardContent>
             </Card>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <InfoOutlined fontSize="small" color="info" sx={{ mr: 1 }} />
+              <Typography variant="body2" color="text.secondary">
+                Click on any column header to sort the data. Click again to reverse the sort order.
+              </Typography>
+            </Box>
           </Box>
           
           {loading ? (
@@ -839,6 +848,12 @@ export default function TechnicalAnalysisPage() {
                       </Alert>
                     )}
                     
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        * All prices and turnover values are in Sri Lankan Rupees (LKR)
+                      </Typography>
+                    </Box>
+
                     {/* Recurring stocks with Bullish Volume Signatures */}
                     <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
                       Stocks with Repeated Bullish Volume Signatures:
@@ -854,6 +869,10 @@ export default function TechnicalAnalysisPage() {
                         />
                       ))}
                     </Box>
+                    
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                      * All prices and turnover values are in Sri Lankan Rupees (LKR)
+                    </Typography>
                   </Box>
                 )}
               </Box>
@@ -999,6 +1018,10 @@ export default function TechnicalAnalysisPage() {
                         No stocks found with RSI Divergence in the selected period.
                       </Alert>
                     )}
+                    
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                      * All prices and turnover values are in Sri Lankan Rupees (LKR)
+                    </Typography>
                   </Box>
                 )}
               </Box>
@@ -1184,6 +1207,10 @@ export default function TechnicalAnalysisPage() {
                         </Paper>
                       </Box>
                     )}
+                    
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 4, mb: 2 }}>
+                      * All prices and turnover values are in Sri Lankan Rupees (LKR)
+                    </Typography>
                   </Box>
                 )}
               </Box>
@@ -1199,6 +1226,12 @@ export default function TechnicalAnalysisPage() {
                       Use the filters below to invoke your selection criteria. You can filter stocks based on RSI, Divergence, Volume Analysis, and more.
                     </Typography>
                     
+                    <Alert severity="info" sx={{ mb: 3 }}>
+                      <Typography variant="body2">
+                        <strong>Pro Tip:</strong> Combine multiple filters such as "Price Above EMA 200" with "Bullish Divergence" to find stocks with strong technical setups.
+                      </Typography>
+                    </Alert>
+
                     <Grid container spacing={3}>
                       {/* Left Column - Filters */}
                       <Grid item xs={12} md={4}>
@@ -1593,6 +1626,10 @@ export default function TechnicalAnalysisPage() {
                         </TableContainer>
                       </Grid>
                     </Grid>
+                    
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 4, mb: 2 }}>
+                      * All prices and turnover values are in Sri Lankan Rupees (LKR)
+                    </Typography>
                   </Box>
                 )}
               </Box>

@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(`http://localhost:8000/api/latest-price/${symbol}`);
+    const response = await fetch(`http://localhost:5000/api/latest-price/${symbol}`);
     if (!response.ok) {
       throw new Error('Failed to fetch latest price');
     }
