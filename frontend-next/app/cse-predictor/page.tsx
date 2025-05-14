@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,11 +20,15 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  ToggleButton,
+  ToggleButtonGroup,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Bar, ComposedChart, Brush, Label, Customized } from 'recharts';
 import Sidebar from '../../components/Sidebar';
 import { navLinks } from '../../components/navLinks';
 import { useTheme } from '@mui/material/styles';
@@ -74,6 +78,14 @@ export default function CSEPredictorPage() {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [tab, setTab] = useState(0);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [latestPrices, setLatestPrices] = useState<Record<string, number>>({});
+  const [expandedDates, setExpandedDates] = useState<string[]>(() => {
+    const sortedDates = Object.keys(groupedPicks).sort((a, b) => b.localeCompare(a));
+    return sortedDates.length > 0 ? [sortedDates[0]] : [];
+  });
+  const [tier2View, setTier2View] = useState<'movers' | 'yet' | 'all'>('movers');
+  const [ohlcvData, setOhlcvData] = useState<any[]>([]);
+  const [showCloseLine, setShowCloseLine] = useState(true);
 
   useEffect(() => {
     const fetchSymbols = async () => {
@@ -101,6 +113,7 @@ export default function CSEPredictorPage() {
         const data = await response.json();
         setGroupedPicks(data.groupedPicks || {});
         setChartData(data.chartData || []);
+        setLatestPrices(data.latestPrices || {});
       } catch (err) {
         setError('Failed to load stock data');
       } finally {
@@ -109,6 +122,60 @@ export default function CSEPredictorPage() {
     };
     fetchData();
   }, [selectedDate, selectedSymbol]);
+
+  useEffect(() => {
+    const sortedDates = Object.keys(groupedPicks).sort((a, b) => b.localeCompare(a));
+    if (sortedDates.length > 0) {
+      const topDate = sortedDates[0];
+      const allSymbols = new Set<string>();
+      ['tier1Picks', 'tier2Picks'].forEach(tier => {
+        (groupedPicks[topDate]?.[tier] || []).forEach((pick: any) => {
+          allSymbols.add(pick.symbol);
+        });
+      });
+      fetchLatestPricesForSymbols(allSymbols);
+      setExpandedDates([topDate]);
+    }
+  }, [groupedPicks]);
+
+  const fetchLatestPricesForSymbols = async (symbols: Set<string>) => {
+    const prices: Record<string, number> = {};
+    await Promise.all(
+      Array.from(symbols).map(async (symbol) => {
+        try {
+          const res = await fetch(`/api/cse-predictor/latest-price?symbol=${symbol}`);
+          const data = await res.json();
+          if (data.latestPrice !== undefined) {
+            prices[symbol] = data.latestPrice;
+          }
+        } catch (e) {
+          // ignore error, fallback to DB price
+        }
+      })
+    );
+    setLatestPrices((prev) => ({ ...prev, ...prices }));
+  };
+
+  const handleAccordionChange = (date: string) => (_: any, expanded: boolean) => {
+    setExpandedDates((prev) => {
+      if (expanded) {
+        const allSymbols = new Set<string>();
+        ['tier1Picks', 'tier2Picks'].forEach(tier => {
+          (groupedPicks[date]?.[tier] || []).forEach((pick: any) => {
+            if (latestPrices[pick.symbol] === undefined) {
+              allSymbols.add(pick.symbol);
+            }
+          });
+        });
+        if (allSymbols.size > 0) {
+          fetchLatestPricesForSymbols(allSymbols);
+        }
+        return [...prev, date];
+      } else {
+        return prev.filter(d => d !== date);
+      }
+    });
+  };
 
   // Preprocess symbol stats for the selected timeframe
   const symbolStats = useMemo(() => {
@@ -127,8 +194,8 @@ export default function CSEPredictorPage() {
               count: 1
             };
           } else {
-            // Update firstDate/firstPrice if this pick is earlier
-            if (pick.date < stats[pick.symbol].firstDate) {
+            // Use Date objects for robust comparison
+            if (new Date(pick.date) < new Date(stats[pick.symbol].firstDate)) {
               stats[pick.symbol].firstDate = pick.date;
               stats[pick.symbol].firstPrice = pick.closing_price;
             }
@@ -139,6 +206,36 @@ export default function CSEPredictorPage() {
     });
     return stats;
   }, [groupedPicks]);
+
+  // Calculate t2Filtered before the JSX
+  const t2FilteredByDate: Record<string, any[]> = {};
+  Object.keys(groupedPicks).forEach(date => {
+    const t2 = [...(groupedPicks[date]?.tier2Picks || [])].sort((a, b) => b.turnover - a.turnover);
+    t2FilteredByDate[date] = t2.filter((stock: any) => {
+      const stat = symbolStats[stock.symbol] || {};
+      const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
+      const gainTilDate = stat.firstPrice && displayPrice
+        ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100)
+        : 0;
+      if (tier2View === 'movers') return gainTilDate > 5;
+      if (tier2View === 'yet') return gainTilDate <= 5;
+      return true;
+    });
+  });
+
+  useEffect(() => {
+    if (!selectedSymbol) return;
+    const fetchOhlcv = async () => {
+      try {
+        const res = await fetch(`/api/cse-predictor/ohlcv?symbol=${selectedSymbol}`);
+        const data = await res.json();
+        setOhlcvData(data.ohlcv || []);
+      } catch (e) {
+        setOhlcvData([]);
+      }
+    };
+    fetchOhlcv();
+  }, [selectedSymbol]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -152,7 +249,7 @@ export default function CSEPredictorPage() {
               </IconButton>
             )}
             <Typography variant="h5" sx={{ flexGrow: 1, fontWeight: 700 }}>
-              CSE Predictor
+              CSE Predictor by Maverick 
             </Typography>
             <Tooltip title="Show disclaimer">
               <IconButton onClick={() => setShowDisclaimer((v) => !v)}>
@@ -163,7 +260,7 @@ export default function CSEPredictorPage() {
         </AppBar>
         {showDisclaimer && (
           <Alert severity="info" sx={{ my: 2 }}>
-            <b>Disclaimer:</b> These results are for informational purposes only. Always conduct your own research and consult with a qualified financial advisor before making any investment decisions.
+            <b>Disclaimer:</b> These results curated by AI Powered Algorithm are for informational purposes only. Always conduct your own research and consult with a qualified financial advisor before making any investment decisions.
           </Alert>
         )}
         {/* Filters */}
@@ -175,6 +272,7 @@ export default function CSEPredictorPage() {
                 value={selectedDate}
                 onChange={(newValue) => setSelectedDate(newValue)}
                 sx={{ width: '100%' }}
+                disabled={tab === 1}
               />
             </LocalizationProvider>
           </Grid>
@@ -209,8 +307,10 @@ export default function CSEPredictorPage() {
             {Object.keys(groupedPicks).sort((a, b) => b.localeCompare(a)).map(date => {
               const t1 = [...(groupedPicks[date]?.tier1Picks || [])].sort((a, b) => b.turnover - a.turnover);
               const t2 = [...(groupedPicks[date]?.tier2Picks || [])].sort((a, b) => b.turnover - a.turnover);
+              // Calculate t2Filtered before the JSX
+              const t2Filtered = t2FilteredByDate[date] || [];
               return (
-                <Accordion key={date} defaultExpanded={Object.keys(groupedPicks)[0] === date}>
+                <Accordion key={date} defaultExpanded={expandedDates.includes(date)} onChange={handleAccordionChange(date)}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Typography variant="h6">{date}</Typography>
                   </AccordionSummary>
@@ -225,7 +325,10 @@ export default function CSEPredictorPage() {
                     <Grid container spacing={2}>
                       {t1.map((stock: any) => {
                         const stat = symbolStats[stock.symbol] || {};
-                        const gainTilDate = stat.firstPrice ? (((stock.closing_price - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2) : '-';
+                        const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
+                        const gainTilDate = stat.firstPrice && displayPrice
+                          ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
+                          : '-';
                         return (
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
@@ -273,10 +376,6 @@ export default function CSEPredictorPage() {
                                 </Box>
                               </Box>
                               <Grid container spacing={0.5} sx={{ mb: 1 }}>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Daily Gain</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(stock.change_pct) > 0 ? 'success.main' : Number(stock.change_pct) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
-                                  {stock.change_pct}%
-                                </Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary' }}>Turnover</Grid>
                                 <Grid item xs={5} sx={{ textAlign: 'right' }}>{Number(stock.turnover).toLocaleString()}</Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
@@ -301,8 +400,11 @@ export default function CSEPredictorPage() {
                                 </Grid>
                               </Grid>
                               <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 1 }}>
+                                <Tooltip title="Latest Close Price">
+                                  <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
+                                </Tooltip>
                                 <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main' }}>
-                                  {stock.closing_price}
+                                  {typeof displayPrice === 'number' ? displayPrice.toFixed(2) : displayPrice}
                                 </Typography>
                               </Box>
                             </Card>
@@ -314,13 +416,32 @@ export default function CSEPredictorPage() {
                     <Typography variant="subtitle1" sx={{ mt: 4, mb: 1, display: 'flex', alignItems: 'center' }}>
                       <span role="img" aria-label="diamond">🔹</span> Tier 2 Picks
                     </Typography>
-                    {t2.length === 0 && (
+                    <ToggleButtonGroup
+                      value={tier2View}
+                      exclusive
+                      onChange={(_, v) => v && setTier2View(v)}
+                      sx={{ width: '100%', mb: 2, display: 'flex', justifyContent: 'center' }}
+                    >
+                      <ToggleButton value="movers" sx={{ flex: 1, fontWeight: 700, fontSize: 15, p: 1.2 }}>
+                        Strong Movers
+                      </ToggleButton>
+                      <ToggleButton value="yet" sx={{ flex: 1, fontWeight: 700, fontSize: 15, p: 1.2 }}>
+                        Yet to Take Off
+                      </ToggleButton>
+                      <ToggleButton value="all" sx={{ flex: 1, fontWeight: 700, fontSize: 15, p: 1.2 }}>
+                        All
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                    {t2Filtered.length === 0 && (
                       <Typography color="text.secondary" sx={{ mb: 2 }}>No Tier 2 picks for this date.</Typography>
                     )}
                     <Grid container spacing={2}>
-                      {t2.map((stock: any) => {
+                      {t2Filtered.map((stock: any) => {
                         const stat = symbolStats[stock.symbol] || {};
-                        const gainTilDate = stat.firstPrice ? (((stock.closing_price - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2) : '-';
+                        const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
+                        const gainTilDate = stat.firstPrice && displayPrice
+                          ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
+                          : '-';
                         return (
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
@@ -368,10 +489,6 @@ export default function CSEPredictorPage() {
                                 </Box>
                               </Box>
                               <Grid container spacing={0.5} sx={{ mb: 1 }}>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Daily Gain</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(stock.change_pct) > 0 ? 'success.main' : Number(stock.change_pct) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
-                                  {stock.change_pct}%
-                                </Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary' }}>Turnover</Grid>
                                 <Grid item xs={5} sx={{ textAlign: 'right' }}>{Number(stock.turnover).toLocaleString()}</Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
@@ -396,8 +513,11 @@ export default function CSEPredictorPage() {
                                 </Grid>
                               </Grid>
                               <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 1 }}>
+                                <Tooltip title="Latest Close Price">
+                                  <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
+                                </Tooltip>
                                 <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main' }}>
-                                  {stock.closing_price}
+                                  {typeof displayPrice === 'number' ? displayPrice.toFixed(2) : displayPrice}
                                 </Typography>
                               </Box>
                             </Card>
@@ -406,7 +526,7 @@ export default function CSEPredictorPage() {
                       })}
                     </Grid>
                     {/* If both are empty */}
-                    {t1.length === 0 && t2.length === 0 && (
+                    {t1.length === 0 && t2Filtered.length === 0 && (
                       <Typography color="text.secondary" sx={{ mt: 2 }}>No picks for this date.</Typography>
                     )}
                   </AccordionDetails>
@@ -419,16 +539,57 @@ export default function CSEPredictorPage() {
           <Box sx={{ mt: 2 }}>
             <Card variant="outlined">
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2 }}>Price Trend</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
+                  <Typography variant="h6">Price & Volume Trend</Typography>
+                  <FormControlLabel
+                    control={<Switch checked={showCloseLine} onChange={(_, v) => setShowCloseLine(v)} color="primary" />}
+                    label="Show Price Trend"
+                    sx={{ ml: 2 }}
+                  />
+                </Box>
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart
+                    data={ohlcvData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <RechartsTooltip />
+                    <XAxis dataKey="date" minTickGap={20} />
+                    <YAxis
+                      yAxisId="left"
+                      orientation="left"
+                      domain={['auto', 'auto']}
+                      tickFormatter={v => v.toLocaleString()}
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      domain={[0, 'auto']}
+                      tickFormatter={v => v.toLocaleString()}
+                    />
+                    <RechartsTooltip content={<CustomTooltip />} />
                     <Legend />
-                    <Line type="monotone" dataKey="closing_price" stroke="#8884d8" activeDot={{ r: 8 }} />
-                  </LineChart>
+                    <Bar
+                      yAxisId="right"
+                      dataKey="volume"
+                      fill="#26a69a"
+                      name="Volume"
+                      barSize={8}
+                      opacity={0.7}
+                    />
+                    {showCloseLine && (
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="close"
+                        stroke="#2962FF"
+                        dot={false}
+                        strokeWidth={2}
+                        name="Close Price"
+                      />
+                    )}
+                    <Customized component={props => <CandlestickLayer {...props} data={ohlcvData} yAxisId="left" />} />
+                    <Brush dataKey="date" height={24} stroke="#2962FF" />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -466,5 +627,46 @@ export default function CSEPredictorPage() {
         )}
       </Box>
     </Box>
+  );
+}
+
+function CandlestickLayer(props: any) {
+  const { data, yAxisId, xAxisMap, yAxisMap, dataStartIndex, dataEndIndex } = props;
+  const yScale = yAxisMap && yAxisMap[yAxisId]?.scale;
+  const xScale = xAxisMap && xAxisMap[0]?.scale;
+  if (!yScale || !xScale) return null;
+  return (
+    <g>
+      {data.slice(dataStartIndex, dataEndIndex + 1).map((d: any, i: number) => {
+        const x = xScale(d.date) - 3;
+        const width = 6;
+        const yOpen = yScale(d.open);
+        const yClose = yScale(d.close);
+        const yHigh = yScale(d.high);
+        const yLow = yScale(d.low);
+        const color = d.close > d.open ? '#26a69a' : '#ef5350';
+        return (
+          <g key={d.date}>
+            <rect x={x + width / 2 - 1} y={Math.min(yHigh, yLow)} width={2} height={Math.abs(yHigh - yLow)} fill={color} />
+            <rect x={x} y={Math.min(yOpen, yClose)} width={width} height={Math.max(2, Math.abs(yOpen - yClose))} fill={color} />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{ background: 'white', border: '1px solid #eee', padding: 10, fontSize: 14 }}>
+      <div><b>{label}</b></div>
+      <div>Open: <b>{d.open?.toLocaleString()}</b></div>
+      <div>High: <b>{d.high?.toLocaleString()}</b></div>
+      <div>Low: <b>{d.low?.toLocaleString()}</b></div>
+      <div>Close: <b>{d.close?.toLocaleString()}</b></div>
+      <div>Volume: <b>{d.volume?.toLocaleString()}</b></div>
+    </div>
   );
 } 

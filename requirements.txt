@@ -14,3 +14,5 @@ pytz
 redis
 rq
 streamlit-js-eval
+fastapi
+uvicorn
