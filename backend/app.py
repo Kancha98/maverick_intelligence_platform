@@ -69,8 +69,8 @@ def cse_predictor():
             # Tier 1
             t1 = group[
                 (group['rsi_divergence'] == "Bullish Divergence") &
-                (group['volume_analysis'].isin(["Emerging Bullish Momentum", "Increase in weekly Volume Activity Detected"])) &
-                (group['relative_strength'] >= 1)
+                (group['volume_analysis'].isin(["Emerging Bullish Momentum", "Increase in weekly Volume Activity Detected"])) 
+
             ]
             # Tier 2
             t2 = group[
