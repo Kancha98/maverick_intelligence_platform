@@ -14,9 +14,15 @@ export async function GET(request: Request) {
       throw new Error('Failed to fetch latest price');
     }
     const data = await response.json();
+    
+    // Pass through the response from the backend
     return NextResponse.json(data);
   } catch (error) {
     console.error(`Error fetching price for ${symbol}:`, error);
-    return NextResponse.json({ error: 'Failed to fetch price' }, { status: 500 });
+    return NextResponse.json({ 
+      latestPrice: null, 
+      fallback: 'error', 
+      message: 'Failed to fetch price' 
+    }, { status: 500 });
   }
 } 

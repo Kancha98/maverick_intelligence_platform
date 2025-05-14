@@ -159,12 +159,44 @@ def get_tv_latest_price(symbol):
         if index_data is not None and 'close' in index_data and len(index_data) > 0:
             return {"latestPrice": float(index_data['close'].iloc[-1])}
         
-        # Fallback data if TradingView API fails
-        return {"latestPrice": 100.0, "fallback": True}
+        # Fallback to database closing price if TradingView API fails
+        try:
+            # Get the latest price from the database
+            conn = init_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT closing_price FROM stock_analysis_all_results WHERE symbol = %s ORDER BY date DESC LIMIT 1",
+                (symbol,)
+            )
+            result = cursor.fetchone()
+            if result and result[0]:
+                return {"latestPrice": float(result[0]), "fallback": "database"}
+            
+            # If no database price is found, return a more informative fallback
+            return {"latestPrice": None, "fallback": "no_data", "message": "No price data available"}
+        except Exception as db_error:
+            print(f"Database fallback error for {symbol}: {str(db_error)}")
+            # Return a clear indication that this is not real data
+            return {"latestPrice": None, "fallback": "error", "message": "Price data unavailable"}
     except Exception as e:
         print(f"Error fetching latest price: {str(e)}")
-        # Return fallback data with error
-        return {"latestPrice": 100.0, "error": str(e), "fallback": True}
+        # Try database fallback
+        try:
+            conn = init_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT closing_price FROM stock_analysis_all_results WHERE symbol = %s ORDER BY date DESC LIMIT 1",
+                (symbol,)
+            )
+            result = cursor.fetchone()
+            if result and result[0]:
+                return {"latestPrice": float(result[0]), "fallback": "database"}
+            
+            # If no database price is found
+            return {"latestPrice": None, "fallback": "no_data", "message": "No price data available", "error": str(e)}
+        except Exception as db_error:
+            print(f"Database fallback error for {symbol}: {str(db_error)}")
+            return {"latestPrice": None, "fallback": "error", "message": "Price data unavailable", "error": str(e)}
 
 def get_tv_ohlcv(symbol):
     try:

@@ -78,7 +78,7 @@ export default function CSEPredictorPage() {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [tab, setTab] = useState(0);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
-  const [latestPrices, setLatestPrices] = useState<Record<string, number>>({});
+  const [latestPrices, setLatestPrices] = useState<Record<string, number | null>>({});
   const [expandedDates, setExpandedDates] = useState<string[]>(() => {
     const sortedDates = Object.keys(groupedPicks).sort((a, b) => b.localeCompare(a));
     return sortedDates.length > 0 ? [sortedDates[0]] : [];
@@ -86,6 +86,7 @@ export default function CSEPredictorPage() {
   const [tier2View, setTier2View] = useState<'movers' | 'yet' | 'all'>('movers');
   const [ohlcvData, setOhlcvData] = useState<any[]>([]);
   const [showCloseLine, setShowCloseLine] = useState(true);
+  const [t2FilteredByDate, setT2FilteredByDate] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     const fetchSymbols = async () => {
@@ -139,17 +140,18 @@ export default function CSEPredictorPage() {
   }, [groupedPicks]);
 
   const fetchLatestPricesForSymbols = async (symbols: Set<string>) => {
-    const prices: Record<string, number> = {};
+    const prices: Record<string, number | null> = {};
     await Promise.all(
       Array.from(symbols).map(async (symbol) => {
         try {
           const res = await fetch(`/api/cse-predictor/latest-price?symbol=${symbol}`);
           const data = await res.json();
-          if (data.latestPrice !== undefined) {
-            prices[symbol] = data.latestPrice;
-          }
+          // Handle the updated API response format
+          prices[symbol] = data.latestPrice; // Can be a number or null
         } catch (e) {
-          // ignore error, fallback to DB price
+          console.error(`Error fetching price for ${symbol}:`, e);
+          // Set to null to indicate error or missing data
+          prices[symbol] = null;
         }
       })
     );
@@ -207,21 +209,42 @@ export default function CSEPredictorPage() {
     return stats;
   }, [groupedPicks]);
 
-  // Calculate t2Filtered before the JSX
-  const t2FilteredByDate: Record<string, any[]> = {};
-  Object.keys(groupedPicks).forEach(date => {
-    const t2 = [...(groupedPicks[date]?.tier2Picks || [])].sort((a, b) => b.turnover - a.turnover);
-    t2FilteredByDate[date] = t2.filter((stock: any) => {
-      const stat = symbolStats[stock.symbol] || {};
-      const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
-      const gainTilDate = stat.firstPrice && displayPrice
-        ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100)
-        : 0;
-      if (tier2View === 'movers') return gainTilDate > 5;
-      if (tier2View === 'yet') return gainTilDate <= 5;
-      return true;
+  // Add an effect to recalculate t2FilteredByDate when tier2View changes
+  useEffect(() => {
+    const filtered: Record<string, any[]> = {};
+    Object.keys(groupedPicks).forEach(date => {
+      // Get tier 2 picks and sort by turnover by default
+      const t2 = [...(groupedPicks[date]?.tier2Picks || [])].sort((a, b) => b.turnover - a.turnover);
+      
+      // Filter based on view type
+      let filteredStocks = t2.filter((stock: any) => {
+        const stat = symbolStats[stock.symbol] || {};
+        const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
+        // Calculate numeric gain value for filtering
+        const numericGain = stat.firstPrice && displayPrice !== null
+          ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100)
+          : 0;
+        
+        if (tier2View === 'movers') return numericGain > 5;
+        if (tier2View === 'yet') return numericGain <= 5;
+        return true;
+      });
+      
+      // Apply different sorting based on the view type
+      if (tier2View === 'yet') {
+        // Sort by count (number of appearances) for "Yet To Take Off" view
+        filteredStocks = filteredStocks.sort((a, b) => {
+          const countA = symbolStats[a.symbol]?.count || 1;
+          const countB = symbolStats[b.symbol]?.count || 1;
+          return countB - countA; // Descending order (highest count first)
+        });
+      }
+      
+      filtered[date] = filteredStocks;
     });
-  });
+    
+    setT2FilteredByDate(filtered);
+  }, [groupedPicks, symbolStats, latestPrices, tier2View]);
 
   useEffect(() => {
     if (!selectedSymbol) return;
@@ -326,7 +349,7 @@ export default function CSEPredictorPage() {
                       {t1.map((stock: any) => {
                         const stat = symbolStats[stock.symbol] || {};
                         const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
-                        const gainTilDate = stat.firstPrice && displayPrice
+                        const gainTilDate = stat.firstPrice && displayPrice !== null
                           ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
                           : '-';
                         return (
@@ -404,7 +427,11 @@ export default function CSEPredictorPage() {
                                   <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
                                 </Tooltip>
                                 <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main' }}>
-                                  {typeof displayPrice === 'number' ? displayPrice.toFixed(2) : displayPrice}
+                                  {typeof displayPrice === 'number' 
+                                    ? displayPrice.toFixed(2) 
+                                    : displayPrice === null
+                                      ? 'N/A'
+                                      : displayPrice}
                                 </Typography>
                               </Box>
                             </Card>
@@ -439,7 +466,7 @@ export default function CSEPredictorPage() {
                       {t2Filtered.map((stock: any) => {
                         const stat = symbolStats[stock.symbol] || {};
                         const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
-                        const gainTilDate = stat.firstPrice && displayPrice
+                        const gainTilDate = stat.firstPrice && displayPrice !== null
                           ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
                           : '-';
                         return (
@@ -517,7 +544,11 @@ export default function CSEPredictorPage() {
                                   <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
                                 </Tooltip>
                                 <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main' }}>
-                                  {typeof displayPrice === 'number' ? displayPrice.toFixed(2) : displayPrice}
+                                  {typeof displayPrice === 'number' 
+                                    ? displayPrice.toFixed(2) 
+                                    : displayPrice === null
+                                      ? 'N/A'
+                                      : displayPrice}
                                 </Typography>
                               </Box>
                             </Card>
