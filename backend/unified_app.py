@@ -23,7 +23,7 @@ class CustomJSONEncoder(json.JSONEncoder):
                 return None
         if isinstance(obj, (np.int_, np.intc, np.intp, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64)):
             return int(obj)
-        if isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
+        if isinstance(obj, (np.float16, np.float32, np.float64)):
             if math.isnan(obj) or math.isinf(obj):
                 return None
             return float(obj)
@@ -340,6 +340,24 @@ def cse_predictor():
         # Filter for volume and turnover
         df = df[(df['turnover'] > 999999) & (df['volume'] > 9999)]
 
+        # Get financial metrics
+        conn = init_connection()
+        with conn.cursor() as cur:
+            # Get financial data
+            cur.execute("SELECT code, eps_ttm, bvps, dps FROM financial_metrics;")
+            fin_data = cur.fetchall()
+        conn.close()
+        
+        # Create financial metrics dictionary
+        fin_metrics = {}
+        for row in fin_data:
+            code, eps_ttm, bvps, dps = row
+            fin_metrics[code] = {
+                'eps_ttm': eps_ttm,
+                'bvps': bvps,
+                'dps': dps
+            }
+        
         # Group by date
         grouped = {}
         for d, group in df.groupby(df['date'].dt.strftime('%Y-%m-%d')):
@@ -357,9 +375,21 @@ def cse_predictor():
                 ) |
                 (group['rsi_divergence'] == "Bullish Divergence")
             ]
+            
+            # Add financial metrics to each stock
+            t1_list = t1.to_dict(orient='records')
+            t2_list = t2.to_dict(orient='records')
+            
+            # Add financial metrics to each stock in t1 and t2
+            for stock_list in [t1_list, t2_list]:
+                for stock in stock_list:
+                    symbol_code = stock['symbol']
+                    if symbol_code in fin_metrics:
+                        stock.update(fin_metrics[symbol_code])
+            
             grouped[d] = {
-                'tier1Picks': t1.to_dict(orient='records'),
-                'tier2Picks': t2.to_dict(orient='records')
+                'tier1Picks': t1_list,
+                'tier2Picks': t2_list
             }
 
         # Chart data (for the selected symbol)
@@ -455,11 +485,49 @@ def fundamental_metrics():
         for col in numeric_cols:
             metrics_df[col] = pd.to_numeric(metrics_df[col], errors='coerce')
                 
+        # Merge financial metrics with closing prices
+        if 'code' in metrics_df.columns:
+            # Merge with closing prices
+            metrics_df = pd.merge(
+                metrics_df, closing_price_df,
+                left_on="code", right_on="symbol", how="left"
+            )
+            print(f"After merge: {len(metrics_df)} rows")
+            
+            # Drop the redundant 'symbol' column after merging if it exists
+            if 'symbol' in metrics_df.columns:
+                metrics_df.drop(columns=["symbol"], inplace=True)
+            
+            # Add the latest close price column
+            metrics_df['Latest Close Price'] = metrics_df['closing_price']
+            
+            # Calculate ratios if they don't already exist
+            # Calculate PER if it doesn't exist
+            if 'PER' not in metrics_df.columns and 'eps_ttm' in metrics_df.columns:
+                metrics_df['PER'] = pd.to_numeric(metrics_df['closing_price'], errors='coerce') / pd.to_numeric(metrics_df['EPS(TTM)'], errors='coerce')
+                metrics_df['PER'] = metrics_df['PER'].round(2)
+            
+            # Calculate PBV if it doesn't exist
+            if 'PBV' not in metrics_df.columns and 'Book Value Per Share' in metrics_df.columns:
+                metrics_df['PBV'] = pd.to_numeric(metrics_df['closing_price'], errors='coerce') / pd.to_numeric(metrics_df['Book Value Per Share'], errors='coerce')
+                metrics_df['PBV'] = metrics_df['PBV'].round(2)
+            
+            # Calculate DY(%) if it doesn't exist
+            if 'DY(%)' not in metrics_df.columns and 'Dividend Per Share' in metrics_df.columns:
+                metrics_df['DY(%)'] = pd.to_numeric(metrics_df['Dividend Per Share'], errors='coerce') / pd.to_numeric(metrics_df['closing_price'], errors='coerce') * 100
+                metrics_df['DY(%)'] = metrics_df['DY(%)'].round(2)
+                
+            # Drop the intermediary closing_price column if we now have Latest Close Price
+            if 'closing_price' in metrics_df.columns and 'Latest Close Price' in metrics_df.columns:
+                metrics_df.drop(columns=["closing_price"], inplace=True)
+        
         # Replace NaN, infinity values with None for proper JSON serialization
         metrics_df.replace([float('inf'), float('-inf')], None, inplace=True)
         
         # Convert to records (list of dicts) for JSON serialization
         # Use pandas.DataFrame.where() to replace NaN with None
+        metrics_df = metrics_df.apply(lambda col: col.map(lambda x: float(x) if isinstance(x, (np.floating, float)) else x))
+
         metrics_data = metrics_df.where(pd.notna(metrics_df), None).to_dict(orient='records')
         
         print(f"Returning {len(metrics_data)} formatted records")
@@ -474,7 +542,7 @@ def fundamental_metrics():
             for item in metrics_data:
                 clean_item = {}
                 for k, v in item.items():
-                    if isinstance(v, float) and (pd.isna(v) or pd.isinf(v) or math.isnan(v)):
+                    if isinstance(v, float) and (np.isnan(v) or np.isinf(v) or math.isnan(v)):
                         clean_item[k] = None
                     else:
                         clean_item[k] = v

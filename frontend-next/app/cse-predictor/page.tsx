@@ -69,7 +69,11 @@ export default function CSEPredictorPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 14); // Set default date to 2 weeks ago
+    return date;
+  });
   const [selectedSymbol, setSelectedSymbol] = useState<string>('');
   const [groupedPicks, setGroupedPicks] = useState<any>({});
   const [chartData, setChartData] = useState<any[]>([]);
@@ -78,6 +82,7 @@ export default function CSEPredictorPage() {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [tab, setTab] = useState(0);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [showDateInfo, setShowDateInfo] = useState(true);
   const [latestPrices, setLatestPrices] = useState<Record<string, number | null>>({});
   const [expandedDates, setExpandedDates] = useState<string[]>(() => {
     const sortedDates = Object.keys(groupedPicks).sort((a, b) => b.localeCompare(a));
@@ -286,6 +291,15 @@ export default function CSEPredictorPage() {
             <b>Disclaimer:</b> These results curated by AI Powered Algorithm are for informational purposes only. Always conduct your own research and consult with a qualified financial advisor before making any investment decisions.
           </Alert>
         )}
+        {showDateInfo && (
+          <Alert 
+            severity="info" 
+            sx={{ my: 2 }} 
+            onClose={() => setShowDateInfo(false)}
+          >
+            <b>Note:</b> The default period is set to display data from the last two weeks. Click the date selector to change this period.
+          </Alert>
+        )}
         {/* Filters */}
         <Grid container spacing={2} sx={{ my: 1 }}>
           <Grid item xs={12} sm={6}>
@@ -335,7 +349,12 @@ export default function CSEPredictorPage() {
               return (
                 <Accordion key={date} defaultExpanded={expandedDates.includes(date)} onChange={handleAccordionChange(date)}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">{date}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      <Typography variant="h6">{date}</Typography>
+                      <Tooltip title="Click to view the picks of the day and the Gain til Date">
+                        <InfoOutlined sx={{ ml: 1, fontSize: 18, color: 'primary.main' }} />
+                      </Tooltip>
+                    </Box>
                   </AccordionSummary>
                   <AccordionDetails>
                     {/* Tier 1 Picks */}
@@ -417,6 +436,39 @@ export default function CSEPredictorPage() {
                                 <Grid item xs={5} sx={{ textAlign: 'right' }}>{stock.relative_strength}</Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary' }}>First Detected</Grid>
                                 <Grid item xs={5} sx={{ textAlign: 'right' }}>{formatDate(stat.firstDate)}</Grid>
+                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                  PER
+                                  <Tooltip title="Price to Earnings Ratio (Price/EPS)">
+                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
+                                  </Tooltip>
+                                </Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                  {stock.eps_ttm && displayPrice 
+                                    ? (displayPrice / stock.eps_ttm).toFixed(2) 
+                                    : '-'}
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                  PBV
+                                  <Tooltip title="Price to Book Value (Price/BVPS)">
+                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
+                                  </Tooltip>
+                                </Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                  {stock.bvps && displayPrice 
+                                    ? (displayPrice / stock.bvps).toFixed(2) 
+                                    : '-'}
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                  DY(%)
+                                  <Tooltip title="Dividend Yield (Dividend/Price × 100)">
+                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
+                                  </Tooltip>
+                                </Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                  {stock.dps && displayPrice && displayPrice > 0
+                                    ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
+                                    : '-'}
+                                </Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
                                 <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
                                   {gainTilDate}%
@@ -534,6 +586,39 @@ export default function CSEPredictorPage() {
                                 <Grid item xs={5} sx={{ textAlign: 'right' }}>{stock.relative_strength}</Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary' }}>First Detected</Grid>
                                 <Grid item xs={5} sx={{ textAlign: 'right' }}>{formatDate(stat.firstDate)}</Grid>
+                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                  PER
+                                  <Tooltip title="Price to Earnings Ratio (Price/EPS)">
+                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
+                                  </Tooltip>
+                                </Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                  {stock.eps_ttm && displayPrice 
+                                    ? (displayPrice / stock.eps_ttm).toFixed(2) 
+                                    : '-'}
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                  PBV
+                                  <Tooltip title="Price to Book Value (Price/BVPS)">
+                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
+                                  </Tooltip>
+                                </Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                  {stock.bvps && displayPrice 
+                                    ? (displayPrice / stock.bvps).toFixed(2) 
+                                    : '-'}
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                  DY(%)
+                                  <Tooltip title="Dividend Yield (Dividend/Price × 100)">
+                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
+                                  </Tooltip>
+                                </Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                  {stock.dps && displayPrice && displayPrice > 0
+                                    ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
+                                    : '-'}
+                                </Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
                                 <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
                                   {gainTilDate}%
@@ -618,7 +703,7 @@ export default function CSEPredictorPage() {
                         name="Close Price"
                       />
                     )}
-                    <Customized component={props => <CandlestickLayer {...props} data={ohlcvData} yAxisId="left" />} />
+                    <Customized component={(props: any) => <CandlestickLayer {...props} data={ohlcvData} yAxisId="left" />} />
                     <Brush dataKey="date" height={24} stroke="#2962FF" />
                   </ComposedChart>
                 </ResponsiveContainer>
