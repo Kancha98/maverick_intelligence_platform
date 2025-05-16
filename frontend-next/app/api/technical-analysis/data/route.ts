@@ -1,13 +1,26 @@
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';  // <--- Add this line
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    // Get URL parameters if any
-    const { searchParams } = new URL(request.url);
-    const dateParam = searchParams.get('date');
-    const exactDate = searchParams.get('exact_date') || 'true'; // default to true
+    // Safely extract URL parameters
+    let dateParam = null;
+    let exactDate = 'true'; // default to true
+    
+    try {
+      // Make sure we have a valid URL
+      if (request.url) {
+        const url = new URL(request.url);
+        dateParam = url.searchParams.get('date');
+        exactDate = url.searchParams.get('exact_date') || 'true';
+      } else {
+        console.warn('[WARN] Request URL is empty or undefined');
+      }
+    } catch (urlError) {
+      console.error('[ERROR] Failed to parse request URL:', urlError);
+      // Continue with default parameters
+    }
     
     // Use BACKEND_URL from environment, default to Flask local
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cse-maverick-be-platform.onrender.com';
