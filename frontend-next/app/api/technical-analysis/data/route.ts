@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';  // <--- Add this line
+
 export async function GET(request: Request) {
   try {
     // Get URL parameters if any
