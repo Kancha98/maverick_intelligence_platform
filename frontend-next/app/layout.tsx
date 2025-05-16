@@ -6,27 +6,31 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { SessionProvider } from 'next-auth/react';
 import './globals.css';
 
-const roboto = Roboto({ subsets: ['latin'], weight: ['400', '500', '700', '900'] });
+const roboto = Roboto({ 
+  weight: ['400', '500', '700', '900'],
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 const theme = createTheme({
   palette: {
-    mode: 'dark',
-    primary: { main: '#fbbf24' },
+    mode: 'light',
+    primary: { main: '#00b86b' },
     secondary: { main: '#6366f1' },
     background: {
-      default: '#181a20',
-      paper: '#23242a',
+      default: '#f7fafc',
+      paper: '#ffffff',
     },
     text: {
-      primary: '#fff',
-      secondary: '#b0b8c1',
+      primary: '#000000',
+      secondary: '#4b5563',
     },
   },
   shape: {
     borderRadius: 12,
   },
   typography: {
-    fontFamily: 'Roboto, Arial, sans-serif',
+    fontFamily: roboto.style.fontFamily,
     h1: { fontWeight: 900 },
     h2: { fontWeight: 700 },
     h3: { fontWeight: 700 },
@@ -42,8 +46,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={roboto.className} style={{ background: '#181a20' }}>
+    <html lang="en" className={roboto.className}>
+      <body>
         <SessionProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
