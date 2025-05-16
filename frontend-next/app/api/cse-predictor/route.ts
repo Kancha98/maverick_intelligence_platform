@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const symbol = searchParams.get('symbol');
 
     // Use NEXT_PUBLIC_API_URL from environment, default to Flask local
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cse-maverick-be-platform.onrender.com';
+    const backendUrl = process.env.API_URL || 'https://cse-maverick-be-platform.onrender.com';
     const url = `${backendUrl}/cse-predictor?date=${date || ''}&symbol=${symbol || ''}`;
 
     const response = await fetch(url);
