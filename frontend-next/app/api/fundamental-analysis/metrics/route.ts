@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';  // <--- Add this line
 export async function GET() {
   try {
     // Use BACKEND_URL from environment, default to Flask local
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cse-maverick-be-platform.onrender.com';
     const url = `${backendUrl}/fundamental-metrics`;
     
     console.log(`Fetching data from: ${url}`);

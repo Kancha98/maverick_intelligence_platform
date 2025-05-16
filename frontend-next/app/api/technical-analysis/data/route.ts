@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const exactDate = searchParams.get('exact_date') || 'true'; // default to true
     
     // Use BACKEND_URL from environment, default to Flask local
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cse-maverick-be-platform.onrender.com';
     
     // Build URL with query parameters if present
     let url = `${backendUrl}/technical-analysis`;

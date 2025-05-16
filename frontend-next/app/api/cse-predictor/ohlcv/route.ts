@@ -9,7 +9,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(`http://localhost:5000/api/ohlcv/${symbol}`);
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cse-maverick-be-platform.onrender.com';
+    const response = await fetch(`${backendUrl}/api/ohlcv/${symbol}`);
     if (!response.ok) {
       throw new Error('Failed to fetch OHLCV data');
     }
