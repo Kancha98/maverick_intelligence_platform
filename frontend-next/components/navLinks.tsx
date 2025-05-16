@@ -14,5 +14,5 @@ export const navLinks = [
   { icon: <BarChart />, label: 'Technical Analysis', path: '/technical-analysis' },
   { icon: <Book />, label: 'Guide', path: '/guide' },
   { icon: <Notifications />, label: 'Notifications', path: '/notifications' },
-  { icon: <AccountCircle />, label: 'User account', path: '/account' },
+  { icon: <AccountCircle />, label: 'Profile Management', path: '/profile' },
 ]; 
