@@ -22,9 +22,9 @@ export async function GET(request: Request) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching CSE Predictor data:', error);
+    console.error('Error fetching CSE Insights data:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch CSE Predictor data' },
+      { error: 'Failed to fetch CSE Insights data' },
       { status: 500 }
     );
   }

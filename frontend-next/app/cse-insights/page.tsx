@@ -65,7 +65,7 @@ function formatDate(dateStr: string) {
   return `${month} ${ordinal(day)} ${year}`;
 }
 
-export default function CSEPredictorPage() {
+export default function CSEInsightsPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -96,7 +96,7 @@ export default function CSEPredictorPage() {
   useEffect(() => {
     const fetchSymbols = async () => {
       try {
-        const response = await fetch('/api/cse-predictor/symbols');
+        const response = await fetch('/api/cse-insights/symbols');
         if (!response.ok) throw new Error('Failed to fetch symbols');
         const data = await response.json();
         setSymbols(data.symbols);
@@ -114,7 +114,7 @@ export default function CSEPredictorPage() {
       setError(null);
       try {
         const dateStr = selectedDate.toISOString().split('T')[0];
-        const response = await fetch(`/api/cse-predictor?date=${dateStr}&symbol=${selectedSymbol}`);
+        const response = await fetch(`/api/cse-insights?date=${dateStr}&symbol=${selectedSymbol}`);
         if (!response.ok) throw new Error('Failed to fetch data');
         const data = await response.json();
         setGroupedPicks(data.groupedPicks || {});
@@ -149,7 +149,7 @@ export default function CSEPredictorPage() {
     await Promise.all(
       Array.from(symbols).map(async (symbol) => {
         try {
-          const res = await fetch(`/api/cse-predictor/latest-price?symbol=${symbol}`);
+          const res = await fetch(`/api/cse-insights/latest-price?symbol=${symbol}`);
           const data = await res.json();
           // Handle the updated API response format
           prices[symbol] = data.latestPrice; // Can be a number or null
@@ -255,7 +255,7 @@ export default function CSEPredictorPage() {
     if (!selectedSymbol) return;
     const fetchOhlcv = async () => {
       try {
-        const res = await fetch(`/api/cse-predictor/ohlcv?symbol=${selectedSymbol}`);
+        const res = await fetch(`/api/cse-insights/ohlcv?symbol=${selectedSymbol}`);
         const data = await res.json();
         setOhlcvData(data.ohlcv || []);
       } catch (e) {
@@ -277,7 +277,7 @@ export default function CSEPredictorPage() {
               </IconButton>
             )}
             <Typography variant="h5" sx={{ flexGrow: 1, fontWeight: 700 }}>
-              CSE Predictor by Maverick 
+              CSE Insights by Maverick 
             </Typography>
             <Tooltip title="Show disclaimer">
               <IconButton onClick={() => setShowDisclaimer((v) => !v)}>

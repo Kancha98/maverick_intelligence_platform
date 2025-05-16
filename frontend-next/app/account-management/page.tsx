@@ -343,7 +343,7 @@ export default function GuidePage() {
             {/* Header */}
             <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
               <Typography variant="h4" component="h1" gutterBottom fontWeight={700}>
-                CSE Predictor Platform Guide
+                CSE Insights Platform Guide
               </Typography>
               <Typography variant="subtitle1" color="text.secondary" gutterBottom>
                 Cut stock selection time from hours to under 10 minutes
@@ -359,7 +359,7 @@ export default function GuidePage() {
             {/* Key Benefits */}
             <Box sx={{ mb: 4 }}>
               <Typography variant="h6" gutterBottom fontWeight={600}>
-                Why CSE Predictor Outperforms Other Platforms
+                Why CSE Insights Outperforms Other Platforms
               </Typography>
               
               <Grid container spacing={3} sx={{ mt: 1 }}>
@@ -456,7 +456,7 @@ export default function GuidePage() {
 
             <Alert severity="success" sx={{ my: 3 }}>
               <Typography variant="body2">
-                <strong>10-Minute Process:</strong> What used to take 3+ hours of manual chart analysis can now be accomplished in under 10 minutes with CSE Predictor.
+                <strong>10-Minute Process:</strong> What used to take 3+ hours of manual chart analysis can now be accomplished in under 10 minutes with CSE Insights.
               </Typography>
             </Alert>
 
@@ -596,12 +596,12 @@ export default function GuidePage() {
                 </Button>
                 <Button 
                   component={NextLink}
-                  href="/cse-predictor" 
+                  href="/cse-insights" 
                   variant="outlined"
                   size="large" 
                   sx={{ px: 3, py: 1 }}
                 >
-                  CSE Predictor
+                  CSE Insights
                 </Button>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
