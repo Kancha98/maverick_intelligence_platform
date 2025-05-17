@@ -72,20 +72,21 @@ export async function GET() {
     
     // Ensure all metrics have valid data (replace NaN with null)
     if (data.metrics && Array.isArray(data.metrics)) {
-      data.metrics = data.metrics.map((metric: Record<string, any>) => {
-        const cleanMetric: Record<string, any> = {};
+      const safeMetrics = data.metrics.map((metric: Record<string, any>) => {
+        const safeMetric: Record<string, any> = {};
         
         // Copy all properties, replacing any NaN values with null
         Object.entries(metric).forEach(([key, value]) => {
-          if (typeof value === 'number' && isNaN(value)) {
-            cleanMetric[key] = null;
+          if (typeof value === 'number' && (!isFinite(value) || isNaN(value))) {
+            safeMetric[key] = null;
           } else {
-            cleanMetric[key] = value;
+            safeMetric[key] = value;
           }
         });
         
-        return cleanMetric;
+        return safeMetric;
       });
+      data.metrics = safeMetrics;
     } else {
       // If metrics is not available or not an array, initialize it
       data.metrics = [];

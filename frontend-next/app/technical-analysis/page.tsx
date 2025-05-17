@@ -7,7 +7,7 @@ import {
   IconButton, Paper, Grid, FormGroup, Checkbox, Chip, 
   Table, TableBody, TableCell, TableContainer, TableHead, 
   TableRow, TextField, Tab, Tabs, useTheme, useMediaQuery,
-  FormControl, InputLabel, Select, MenuItem, Divider
+  FormControl, InputLabel, Select, MenuItem, Divider, ListItemText
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -76,6 +76,9 @@ interface RecurringStock {
   value: number;
 }
 
+// Update sectors state type
+type SectorType = { sector: string; codes: string[]; symbols?: string[] };
+
 export default function TechnicalAnalysisPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const theme = useTheme();
@@ -93,7 +96,8 @@ export default function TechnicalAnalysisPage() {
   const [tier3Data, setTier3Data] = useState<StockData[]>([]);
   
   // Date filter state
-  const [startDate, setStartDate] = useState<Date | null>(new Date(new Date().setDate(new Date().getDate() - 7)));
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   
   // Filter settings
   const [rsiRange, setRsiRange] = useState<[number, number]>([30, 70]);
@@ -119,6 +123,59 @@ export default function TechnicalAnalysisPage() {
 
   // Add a new state for DIY filtered data
   const [diyFilteredData, setDiyFilteredData] = useState<StockData[]>([]);
+
+  // Sector codes
+  const [sectorCodes, setSectorCodes] = useState<Set<string>>(new Set());
+
+  // Add new state variables after existing state declarations
+  const [sectors, setSectors] = useState<SectorType[]>([]);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+
+  // Add useEffect to fetch sectors on mount
+  useEffect(() => {
+    fetch('/api/sectors')
+      .then(res => res.json())
+      .then(data => setSectors(data.sectors || []));
+  }, []);
+
+  // 1. Sort sectors alphabetically before rendering
+  const sortedSectors = useMemo(() => [...sectors].sort((a, b) => a.sector.localeCompare(b.sector)), [sectors]);
+
+  // 2. By default, select all sectors on mount
+  useEffect(() => {
+    if (sectors.length > 0 && selectedSectors.length === 0) {
+      setSelectedSectors(sectors.map(s => s.sector));
+    }
+  }, [sectors]);
+
+  // Add handlers for sector dropdown and Apply Filter
+  const handleSectorChange = (event: any) => {
+    const value = event.target.value;
+    if (value.includes('all')) {
+      if (selectedSectors.length === sectors.length) {
+        setSelectedSectors([]);
+      } else {
+        setSelectedSectors(sectors.map(s => s.sector));
+      }
+    } else {
+      setSelectedSectors(value);
+    }
+  };
+
+  const handleApplySectorFilter = () => {
+    const codes = new Set<string>();
+    sectors.forEach(sector => {
+      if (selectedSectors.includes(sector.sector)) {
+        if (Array.isArray(sector.codes)) {
+          sector.codes.forEach((code: string) => codes.add(code));
+        }
+        if (Array.isArray(sector.symbols)) {
+          sector.symbols.forEach((code: string) => codes.add(code));
+        }
+      }
+    });
+    setSectorCodes(codes);
+  };
 
   // Function to get recurring stocks
   const recurringStocks = (data: StockData[]): RecurringStock[] => {
@@ -234,62 +291,37 @@ export default function TechnicalAnalysisPage() {
   };
 
   // Fetch data on component mount
-  useEffect(() => {
-    fetchTechnicalData();
-  }, []);
+  // useEffect(() => {
+  //   fetchTechnicalData();
+  // }, []);
 
   // Add a refresh function to manually refresh data
   const refreshData = () => {
     fetchTechnicalData();
   };
 
-  // Filter data by date
-  const filterByDate = async () => {
-    if (!startDate) return;
-    
-    const selectedDate = new Date(startDate);
-    const formattedDate = selectedDate.toISOString().split('T')[0];
-    console.log(`Filtering data by date: ${formattedDate}`);
-    
-    // Fetch data with date filter
+  // Add a new filterByDateRange function that fetches data for the selected date range
+  const filterByDateRange = async () => {
+    if (!startDate || !endDate) return;
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
     setLoading(true);
     setError(null);
-    
     try {
-      // Use the date parameter in the API call with exact_date=true for exact date filtering
-      const response = await fetch(`/api/technical-analysis/data?date=${formattedDate}&exact_date=true`, { 
+      const response = await fetch(`/api/technical-analysis/data?start_date=${startDateStr}&end_date=${endDateStr}`, {
         cache: 'no-store',
         headers: { 'Accept': 'application/json' }
       });
-      
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Error fetching data: ${response.status} - ${errorText}`);
       }
-      
       const responseData = await response.json();
-      
-      if (responseData.error) {
-        throw new Error(responseData.error);
-      }
-      
       const fetchedData = responseData.data || [];
-      console.log(`Received ${fetchedData.length} records for date: ${formattedDate}`);
-      
-      if (!fetchedData || !Array.isArray(fetchedData) || fetchedData.length === 0) {
-        setStockData([]);
-        setFilteredData([]);
-        setTier1Data([]);
-        setTier2Data([]);
-        setTier3Data([]);
-        setLoading(false);
-        return;
-      }
-      
-      // Use the closing_price directly from the dataset for the selected date
-      const formattedData: StockData[] = fetchedData.map((item: any) => ({
+      // Convert API data to StockData format
+      let formattedData = fetchedData.map((item: any) => ({
         symbol: item.symbol || '',
-        date: item.date || formattedDate,
+        date: item.date || '',
         closing_price: typeof item.closing_price === 'number' ? item.closing_price : 0,
         change_pct: typeof item.change_pct === 'number' ? item.change_pct : 0,
         volume: typeof item.volume === 'number' ? item.volume : 0,
@@ -305,42 +337,32 @@ export default function TechnicalAnalysisPage() {
         vol_avg_5d: item.vol_avg_5d,
         vol_avg_20d: item.vol_avg_20d
       }));
-      
-      // Log the first few records to verify the data is correct
-      if (formattedData.length > 0) {
-        console.log('Sample data from filtered results:');
-        formattedData.slice(0, 3).forEach((stock, idx) => {
-          console.log(`Record ${idx+1}: ${stock.symbol}, Date: ${stock.date}, Price: ${stock.closing_price}, Turnover: ${stock.turnover}`);
-        });
-      }
-      
-      // Set all data states with the filtered data
+      // Filter by date range (inclusive)
+      formattedData = formattedData.filter((stock: StockData) => {
+        if (!stock.date) return false;
+        const stockDate = new Date(stock.date);
+        return stockDate >= startDate && stockDate <= endDate;
+      });
       setStockData(formattedData);
       setFilteredData(formattedData);
-      
-      // Filter data for each tier (following Python logic)
-      const tier1 = formattedData.filter(stock => 
+      // Filter data for each tier (add type annotation for stock)
+      const tier1 = formattedData.filter((stock: StockData) => 
         ['High Bullish Momentum', 'Emerging Bullish Momentum', 'Increase in weekly Volume Activity Detected'].includes(stock.volume_analysis)
       );
-      
-      const tier2 = formattedData.filter(stock => 
+      const tier2 = formattedData.filter((stock: StockData) => 
         ['Bullish Divergence', 'Bearish Divergence'].includes(stock.rsi_divergence)
       );
-      
-      const tier3 = formattedData.filter(stock => 
+      const tier3 = formattedData.filter((stock: StockData) => 
         ['Emerging Bullish Momentum', 'High Bullish Momentum'].includes(stock.volume_analysis) &&
         stock.turnover > 999999 &&
         stock.volume > 9999 &&
         stock.relative_strength >= 1
       );
-      
       setTier1Data(tier1);
       setTier2Data(tier2);
       setTier3Data(tier3);
-      
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch technical analysis data with date filter';
-      console.error('Error in filterByDate:', errorMessage, err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch technical analysis data with date range filter';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -440,6 +462,12 @@ export default function TechnicalAnalysisPage() {
     
     return getSortedData(filtered);
   }, [filteredData, sortConfig, symbolSearch]);
+
+  // Filter stockData by sector
+  const filteredStockDataBySector = useMemo(() => {
+    if (!sectorCodes) return stockData;
+    return stockData.filter(stock => sectorCodes.has(stock.symbol));
+  }, [stockData, sectorCodes]);
 
   // Add a function to apply DIY filters
   const applyDiyFilters = () => {
@@ -612,57 +640,101 @@ export default function TechnicalAnalysisPage() {
           </Box>
           
           {/* Date filter */}
-          <Box sx={{ mb: 3 }}>
-            <Card variant="outlined" sx={{ borderRadius: 2, mb: 3 }}>
-              <CardContent>
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} sm={6} md={4}>
-                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                      Select Start Date for Filtering Stocks
-                    </Typography>
-                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                      <DatePicker
-                        value={startDate}
-                        onChange={(newDate) => setStartDate(newDate)}
-                        slotProps={{ textField: { fullWidth: true, size: 'small' } }}
-                      />
-                    </LocalizationProvider>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={4}>
-                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                      Search by Symbol
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      label="Symbol"
-                      variant="outlined"
-                      size="small"
-                      value={symbolSearch}
-                      onChange={(e) => setSymbolSearch(e.target.value)}
-                      placeholder="Enter stock symbol"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={4}>
-                    <Button 
-                      variant="contained" 
-                      color="primary" 
-                      onClick={filterByDate}
-                      sx={{ mt: { xs: 0, sm: 3 }, px: 3 }}
-                    >
-                      Apply Filter
-                    </Button>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <InfoOutlined fontSize="small" color="info" sx={{ mr: 1 }} />
-              <Typography variant="body2" color="text.secondary">
-                Click on any column header to sort the data. Click again to reverse the sort order.
-              </Typography>
-            </Box>
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            mb: 3,
+            bgcolor: '#fff',
+            p: 2,
+            borderRadius: 2,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            flexWrap: { xs: 'wrap', sm: 'nowrap' },
+          }}>
+            <FormControl sx={{ minWidth: 180 }} size="small">
+              <InputLabel>Sector</InputLabel>
+              <Select
+                multiple
+                value={selectedSectors}
+                onChange={handleSectorChange}
+                label="Sector"
+                renderValue={(selected) => {
+                  if (selected.length === 0 || selected.length === sortedSectors.length) return 'All Sectors';
+                  if (selected.length <= 3) return selected.join(', ');
+                  return `${selected.length} Sectors Selected`;
+                }}
+                sx={{ minWidth: 120, maxWidth: 220, background: '#fff' }}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 320,
+                      background: '#fff',
+                    },
+                  },
+                }}
+              >
+                {sortedSectors.map((sector) => (
+                  <MenuItem key={sector.sector} value={sector.sector}>
+                    <Checkbox checked={selectedSectors.indexOf(sector.sector) > -1} />
+                    <ListItemText primary={sector.sector} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={selectedSectors.length === sortedSectors.length && sortedSectors.length > 0}
+                  indeterminate={selectedSectors.length > 0 && selectedSectors.length < sortedSectors.length}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      setSelectedSectors(sortedSectors.map(s => s.sector));
+                    } else {
+                      setSelectedSectors([]);
+                    }
+                  }}
+                  sx={{ p: 0.5 }}
+                />
+              }
+              label="Select All"
+              sx={{ ml: 0.5, mr: 1, whiteSpace: 'nowrap', '.MuiFormControlLabel-label': { fontSize: { xs: 13, sm: 15 } } }}
+            />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Start Date"
+                value={startDate}
+                onChange={(newDate: Date | null) => setStartDate(newDate)}
+                slotProps={{ textField: { size: 'small', sx: { minWidth: 120 } } }}
+              />
+              <DatePicker
+                label="End Date"
+                value={endDate}
+                onChange={(newDate: Date | null) => setEndDate(newDate)}
+                slotProps={{ textField: { size: 'small', sx: { minWidth: 120 } } }}
+              />
+            </LocalizationProvider>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => {
+                if (selectedSectors.length > 0 && startDate && endDate) {
+                  handleApplySectorFilter();
+                  filterByDateRange();
+                }
+              }}
+              sx={{ minWidth: 110, fontWeight: 700, borderRadius: 2, py: 1, px: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
+              disabled={selectedSectors.length === 0 || !startDate || !endDate}
+            >
+              Apply Filter
+            </Button>
           </Box>
+          
+          {/* Only show data/results if data has been loaded (filteredData.length > 0 or loading/error). Otherwise, show a placeholder message. */}
+          {!loading && !error && filteredData.length === 0 && (
+            <Alert severity="info" sx={{ mb: 3 }}>
+              Please select sector(s) and date, then click <b>Apply Filter</b> to load technical analysis data.
+            </Alert>
+          )}
           
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -849,9 +921,7 @@ export default function TechnicalAnalysisPage() {
                     )}
                     
                     <Box sx={{ mb: 2 }}>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        * All prices and turnover values are in Sri Lankan Rupees (LKR)
-                      </Typography>
+
                     </Box>
 
                     {/* Recurring stocks with Bullish Volume Signatures */}
@@ -1574,7 +1644,7 @@ export default function TechnicalAnalysisPage() {
                                     {stock.relative_strength.toFixed(2)}
                                   </TableCell>
                                 </TableRow>
-                              )) : filteredStockData.slice(0, 10).map((stock, index) => (
+                              )) : filteredStockDataBySector.slice(0, 10).map((stock, index) => (
                                 <TableRow 
                                   key={`${stock.symbol}-${index}`}
                                   hover

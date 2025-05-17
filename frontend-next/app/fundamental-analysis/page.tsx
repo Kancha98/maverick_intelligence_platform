@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Button, Card, CardContent, Slider, Checkbox,
   FormControlLabel, CircularProgress, Alert, AppBar, Toolbar,
   IconButton, Paper, Grid, FormGroup, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Chip, TableSortLabel, TextField, InputAdornment
+  TableContainer, TableHead, TableRow, Chip, TableSortLabel, TextField, InputAdornment,
+  Select, MenuItem, ListItemText, FormControl, InputLabel, Tooltip
 } from '@mui/material';
 import Sidebar from '../../components/Sidebar';
 import { useTheme } from '@mui/material/styles';
@@ -47,6 +48,9 @@ export default function FundamentalAnalysisPage() {
     'code', 'PER', 'PBV', 'DY(%)', 'Latest Close Price'
   ]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sectorCodes, setSectorCodes] = useState<Set<string>>(new Set());
+  const [sectors, setSectors] = useState<{ sector: string; codes: string[]; symbols?: string[] }[]>([]);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   
   // Define column definitions with labels and default selection status
   const columnDefinitions = [
@@ -71,6 +75,16 @@ export default function FundamentalAnalysisPage() {
   // Sort state
   const [orderBy, setOrderBy] = useState<string>('DY(%)');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  
+  // 1. Sort sectors alphabetically before rendering
+  const sortedSectors = useMemo(() => [...sectors].sort((a, b) => a.sector.localeCompare(b.sector)), [sectors]);
+  
+  // 2. By default, select all sectors on mount
+  useEffect(() => {
+    if (sectors.length > 0 && selectedSectors.length === 0) {
+      setSelectedSectors(sectors.map(s => s.sector));
+    }
+  }, [sectors]);
   
   // Fetch financial metrics
   const fetchFinancialMetrics = async () => {
@@ -219,6 +233,12 @@ export default function FundamentalAnalysisPage() {
     }
   }, [metrics, perRange, pbvRange, dyRange, orderBy, order, searchQuery]);
   
+  // Filter metrics by sector
+  const filteredMetricsBySector = useMemo(() => {
+    if (!sectorCodes) return filteredMetrics;
+    return filteredMetrics.filter(m => sectorCodes.has(m.code));
+  }, [filteredMetrics, sectorCodes]);
+  
   // Initial data fetch
   useEffect(() => {
     fetchFinancialMetrics();
@@ -268,6 +288,42 @@ export default function FundamentalAnalysisPage() {
     
     // Reset selected columns to default
     setSelectedColumns(['code', 'PER', 'PBV', 'DY(%)', 'Latest Close Price']);
+  };
+  
+  // Add useEffect to fetch sectors on mount
+  useEffect(() => {
+    fetch('/api/sectors')
+      .then(res => res.json())
+      .then(data => setSectors(data.sectors || []));
+  }, []);
+  
+  // Add handlers for sector dropdown and Apply Filter
+  const handleSectorChange = (event: any) => {
+    const value = event.target.value;
+    if (value.includes('all')) {
+      if (selectedSectors.length === sectors.length) {
+        setSelectedSectors([]);
+      } else {
+        setSelectedSectors(sectors.map(s => s.sector));
+      }
+    } else {
+      setSelectedSectors(value);
+    }
+  };
+  
+  const handleApplySectorFilter = () => {
+    const codes = new Set<string>();
+    sectors.forEach(sector => {
+      if (selectedSectors.includes(sector.sector)) {
+        if (Array.isArray(sector.codes)) {
+          sector.codes.forEach((code: string) => codes.add(code));
+        }
+        if (Array.isArray(sector.symbols)) {
+          sector.symbols.forEach((code: string) => codes.add(code));
+        }
+      }
+    });
+    setSectorCodes(codes);
   };
   
   return (
@@ -346,6 +402,77 @@ export default function FundamentalAnalysisPage() {
           {/* Filters */}
           {!loading && metrics.length > 0 && (
             <>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'row', sm: 'row' },
+                  alignItems: 'center',
+                  flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                  gap: 1.5,
+                  mb: 2,
+                  mt: 1,
+                }}
+              >
+                <FormControl sx={{ minWidth: 140, flex: '1 1 160px' }} size="small">
+                  <InputLabel>Sector</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedSectors}
+                    onChange={handleSectorChange}
+                    label="Sector"
+                    renderValue={(selected) => {
+                      if (selected.length === 0 || selected.length === sortedSectors.length) return 'All Sectors';
+                      if (selected.length <= 3) return selected.join(', ');
+                      return `${selected.length} Sectors Selected`;
+                    }}
+                    sx={{ minWidth: 120, maxWidth: 220, background: '#fff' }}
+                    MenuProps={{
+                      PaperProps: {
+                        style: {
+                          maxHeight: 320,
+                          background: '#fff',
+                        },
+                      },
+                    }}
+                  >
+                    {sortedSectors.map((sector) => (
+                      <MenuItem key={sector.sector} value={sector.sector}>
+                        <Checkbox checked={selectedSectors.indexOf(sector.sector) > -1} />
+                        <ListItemText primary={sector.sector} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Tooltip title="Select or deselect all sectors.">
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedSectors.length === sortedSectors.length && sortedSectors.length > 0}
+                        indeterminate={selectedSectors.length > 0 && selectedSectors.length < sortedSectors.length}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setSelectedSectors(sortedSectors.map(s => s.sector));
+                          } else {
+                            setSelectedSectors([]);
+                          }
+                        }}
+                        sx={{ p: 0.5 }}
+                      />
+                    }
+                    label="Select All"
+                    sx={{ ml: 0.5, mr: 1, whiteSpace: 'nowrap', '.MuiFormControlLabel-label': { fontSize: { xs: 13, sm: 15 } } }}
+                  />
+                </Tooltip>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleApplySectorFilter}
+                  sx={{ minWidth: 110, fontWeight: 700, borderRadius: 2, py: 1, px: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
+                >
+                  Apply Filter
+                </Button>
+              </Box>
+              
               <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 2, overflow: 'auto' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6" fontWeight={700}>
@@ -491,7 +618,7 @@ export default function FundamentalAnalysisPage() {
                   Financial Metrics Results
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                     {searchQuery ? `Showing results for "${searchQuery}"` : ''} 
-                    {filteredMetrics.length} of {metrics.length} stocks
+                    {filteredMetricsBySector.length} of {metrics.length} stocks
                   </Typography>
                 </Typography>
                 
@@ -525,7 +652,7 @@ export default function FundamentalAnalysisPage() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {filteredMetrics.map((row, index) => (
+                      {filteredMetricsBySector.map((row, index) => (
                         <TableRow 
                           key={index}
                           sx={{ '&:nth-of-type(even)': { backgroundColor: '#f8fafc' } }}
@@ -626,7 +753,7 @@ export default function FundamentalAnalysisPage() {
                         </TableRow>
                       ))}
                       
-                      {filteredMetrics.length === 0 && (
+                      {filteredMetricsBySector.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={selectedColumns.length} align="center" sx={{ py: 3 }}>
                             No results found with the current filters.

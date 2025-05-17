@@ -24,6 +24,8 @@ import {
   ToggleButtonGroup,
   Switch,
   FormControlLabel,
+  Button,
+  Checkbox,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -85,13 +87,29 @@ export default function CSEInsightsPage() {
   const [showDateInfo, setShowDateInfo] = useState(true);
   const [latestPrices, setLatestPrices] = useState<Record<string, number | null>>({});
   const [expandedDates, setExpandedDates] = useState<string[]>(() => {
-    const sortedDates = Object.keys(groupedPicks).sort((a, b) => b.localeCompare(a));
+    const sortedDates = Object.keys(groupedPicks || {}).sort((a, b) => b.localeCompare(a));
     return sortedDates.length > 0 ? [sortedDates[0]] : [];
   });
   const [tier2View, setTier2View] = useState<'movers' | 'yet' | 'all'>('movers');
   const [ohlcvData, setOhlcvData] = useState<any[]>([]);
   const [showCloseLine, setShowCloseLine] = useState(true);
   const [t2FilteredByDate, setT2FilteredByDate] = useState<Record<string, any[]>>({});
+  const [sectors, setSectors] = useState<{ sector: string; symbols: string[] }[]>([]);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [appliedSectors, setAppliedSectors] = useState<string[]>([]);
+
+  // Helper to get all codes for applied sectors (move this above useEffect)
+  const sectorCodes = useMemo(() => {
+    if (appliedSectors.length === 0) return null;
+    const codes = new Set<string>();
+    appliedSectors.forEach(sector => {
+      const found = sectors.find(s => s.sector === sector);
+      if (found?.symbols) {
+        found.symbols.forEach(code => codes.add(code));
+      }
+    });
+    return codes;
+  }, [appliedSectors, sectors]);
 
   useEffect(() => {
     const fetchSymbols = async () => {
@@ -130,13 +148,16 @@ export default function CSEInsightsPage() {
   }, [selectedDate, selectedSymbol]);
 
   useEffect(() => {
-    const sortedDates = Object.keys(groupedPicks).sort((a, b) => b.localeCompare(a));
+    const sortedDates = Object.keys(groupedPicks || {}).sort((a, b) => b.localeCompare(a));
     if (sortedDates.length > 0) {
       const topDate = sortedDates[0];
       const allSymbols = new Set<string>();
       ['tier1Picks', 'tier2Picks'].forEach(tier => {
-        (groupedPicks[topDate]?.[tier] || []).forEach((pick: any) => {
-          allSymbols.add(pick.symbol);
+        const picks = groupedPicks[topDate]?.[tier] || [];
+        picks.forEach((pick: any) => {
+          if (pick?.symbol) {
+            allSymbols.add(pick.symbol);
+          }
         });
       });
       fetchLatestPricesForSymbols(allSymbols);
@@ -168,8 +189,9 @@ export default function CSEInsightsPage() {
       if (expanded) {
         const allSymbols = new Set<string>();
         ['tier1Picks', 'tier2Picks'].forEach(tier => {
-          (groupedPicks[date]?.[tier] || []).forEach((pick: any) => {
-            if (latestPrices[pick.symbol] === undefined) {
+          const picks = groupedPicks[date]?.[tier] || [];
+          picks.forEach((pick: any) => {
+            if (pick?.symbol && latestPrices[pick.symbol] === undefined) {
               allSymbols.add(pick.symbol);
             }
           });
@@ -191,9 +213,11 @@ export default function CSEInsightsPage() {
       firstPrice: number,
       count: number
     }> = {};
-    Object.values(groupedPicks).forEach((day: any) => {
+    Object.values(groupedPicks || {}).forEach((day: any) => {
       ['tier1Picks', 'tier2Picks'].forEach(tier => {
-        (day?.[tier] || []).forEach((pick: any) => {
+        const picks = day?.[tier] || [];
+        picks.forEach((pick: any) => {
+          if (!pick?.symbol) return;
           if (!stats[pick.symbol]) {
             stats[pick.symbol] = {
               firstDate: pick.date,
@@ -219,37 +243,45 @@ export default function CSEInsightsPage() {
     const filtered: Record<string, any[]> = {};
     Object.keys(groupedPicks).forEach(date => {
       // Get tier 2 picks and sort by turnover by default
-      const t2 = [...(groupedPicks[date]?.tier2Picks || [])].sort((a, b) => b.turnover - a.turnover);
-      
+      let t2 = [...(groupedPicks[date]?.tier2Picks || [])].sort((a, b) => (b.turnover || 0) - (a.turnover || 0));
+
+      // Apply sector filtering here!
+      if (sectorCodes) {
+        t2 = t2.filter((stock: any) => sectorCodes.has(stock.symbol));
+      }
+
       // Filter based on view type
-      let filteredStocks = t2.filter((stock: any) => {
-        const stat = symbolStats[stock.symbol] || {};
-        const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
-        // Calculate numeric gain value for filtering
-        const numericGain = stat.firstPrice && displayPrice !== null
-          ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100)
-          : 0;
-        
-        if (tier2View === 'movers') return numericGain > 5;
-        if (tier2View === 'yet') return numericGain <= 5;
-        return true;
-      });
-      
-      // Apply different sorting based on the view type
-      if (tier2View === 'yet') {
-        // Sort by count (number of appearances) for "Yet To Take Off" view
-        filteredStocks = filteredStocks.sort((a, b) => {
+      let filteredStocks = t2;
+      if (tier2View === 'movers') {
+        filteredStocks = t2.filter((stock: any) => {
+          const stat = symbolStats[stock.symbol] || {};
+          const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
+          const numericGain = stat.firstPrice && displayPrice !== null
+            ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100)
+            : 0;
+          return numericGain > 5;
+        });
+      } else if (tier2View === 'yet') {
+        filteredStocks = t2.filter((stock: any) => {
+          const stat = symbolStats[stock.symbol] || {};
+          const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
+          const numericGain = stat.firstPrice && displayPrice !== null
+            ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100)
+            : 0;
+          return numericGain <= 5;
+        }).sort((a, b) => {
           const countA = symbolStats[a.symbol]?.count || 1;
           const countB = symbolStats[b.symbol]?.count || 1;
-          return countB - countA; // Descending order (highest count first)
+          return countB - countA;
         });
       }
-      
+      // For "all", filteredStocks is just t2 (already filtered by sector)
+
       filtered[date] = filteredStocks;
     });
-    
+
     setT2FilteredByDate(filtered);
-  }, [groupedPicks, symbolStats, latestPrices, tier2View]);
+  }, [groupedPicks, symbolStats, latestPrices, tier2View, sectorCodes]);
 
   useEffect(() => {
     if (!selectedSymbol) return;
@@ -264,6 +296,29 @@ export default function CSEInsightsPage() {
     };
     fetchOhlcv();
   }, [selectedSymbol]);
+
+  useEffect(() => {
+    fetch('https://cse-maverick-be-platform.onrender.com/sectors')
+      .then(res => res.json())
+      .then(data => setSectors(data.sectors || []));
+  }, []);
+
+  // Filter groupedPicks by sector
+  const filteredGroupedPicks = useMemo(() => {
+    if (!sectorCodes || selectedSectors.length === sectors.length) return groupedPicks;
+    const filterTier = (arr: any[]) => arr.filter((pick: any) => sectorCodes.has(pick.symbol));
+    const filtered: any = {};
+    Object.entries(groupedPicks).forEach(([date, picks]: any) => {
+      filtered[date] = {
+        ...picks,
+        tier1Picks: filterTier(picks.tier1Picks || []),
+        tier2Picks: filterTier(picks.tier2Picks || []),
+      };
+    });
+    return filtered;
+  }, [groupedPicks, sectorCodes, selectedSectors, sectors]);
+
+  const selectedSectorSymbols = sectors.find(s => s.sector === selectedSectors[0])?.symbols || [];
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -303,15 +358,7 @@ export default function CSEInsightsPage() {
         {/* Filters */}
         <Grid container spacing={2} sx={{ my: 1 }}>
           <Grid item xs={12} sm={6}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Select Start Date"
-                value={selectedDate}
-                onChange={(newValue) => setSelectedDate(newValue)}
-                sx={{ width: '100%' }}
-                disabled={tab === 1}
-              />
-            </LocalizationProvider>
+            
           </Grid>
           {tab === 1 && (
             <Grid item xs={12} sm={6}>
@@ -332,6 +379,84 @@ export default function CSEInsightsPage() {
             </Grid>
           )}
         </Grid>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={selectedSectors.length === sectors.length && sectors.length > 0}
+                indeterminate={selectedSectors.length > 0 && selectedSectors.length < sectors.length}
+                onChange={e => {
+                  if (e.target.checked) {
+                    setSelectedSectors(sectors.map(s => s.sector));
+                  } else {
+                    setSelectedSectors([]);
+                  }
+                }}
+                color="primary"
+              />
+            }
+            label="Select All Sectors"
+            sx={{ mr: 2 }}
+          />
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <DatePicker
+              label="Select Start Date"
+              value={selectedDate}
+              onChange={setSelectedDate}
+              slotProps={{ textField: { fullWidth: false, size: 'small' } }}
+            />
+          </LocalizationProvider>
+          <FormControl sx={{ minWidth: 180 }} size="small">
+            <InputLabel id="sector-select-label">Sectors</InputLabel>
+            <Select
+              labelId="sector-select-label"
+              multiple
+              value={selectedSectors}
+              label="Sectors"
+              onChange={e => setSelectedSectors(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              renderValue={(selected) => {
+                if (selected.length === 0 || selected.length === sectors.length) return 'All Sectors';
+                if (selected.length <= 3) return selected.join(', ');
+                return `${selected.length} Sectors Selected`;
+              }}
+              MenuProps={{
+                PaperProps: {
+                  style: {
+                    maxHeight: 320,
+                    background: '#fff', // Ensures white background
+                  },
+                },
+              }}
+            >
+              {[...sectors].sort((a, b) => a.sector.localeCompare(b.sector)).map(s => (
+                <MenuItem key={s.sector} value={s.sector}>
+                  <Checkbox checked={selectedSectors.indexOf(s.sector) > -1} />
+                  {s.sector}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            sx={{ ml: 2 }}
+            onClick={() => {
+              setAppliedSectors(selectedSectors);
+              // Debug: log the codes that will be used for filtering
+              const codes: string[] = [];
+              selectedSectors.forEach(sector => {
+                const found = sectors.find(s => s.sector === sector);
+                if (found?.symbols && Array.isArray(found.symbols)) {
+                  codes.push(...found.symbols);
+                }
+              });
+              console.log('Filtering for codes:', codes);
+            }}
+          >
+            Apply Filter
+          </Button>
+        </Box>
         {/* Tabs */}
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }} variant="scrollable" scrollButtons="auto">
           <Tab label="Picks" />
@@ -341,11 +466,24 @@ export default function CSEInsightsPage() {
         {/* Tab Panels */}
         {tab === 0 && (
           <Box>
-            {Object.keys(groupedPicks).sort((a, b) => b.localeCompare(a)).map(date => {
-              const t1 = [...(groupedPicks[date]?.tier1Picks || [])].sort((a, b) => b.turnover - a.turnover);
-              const t2 = [...(groupedPicks[date]?.tier2Picks || [])].sort((a, b) => b.turnover - a.turnover);
+            {Object.keys(filteredGroupedPicks).sort((a, b) => b.localeCompare(a)).map(date => {
+              const t1 = [...(filteredGroupedPicks[date]?.tier1Picks || [])].sort((a, b) => b.turnover - a.turnover);
+              const t2 = [...(filteredGroupedPicks[date]?.tier2Picks || [])].sort((a, b) => b.turnover - a.turnover);
+              // Debug logs
+              console.log('FULL Tier 1 array:', t1);
+              console.log('FULL Tier 2 array:', t2);
+              console.log('Rendering Tier 1 symbols:', t1.map(stock => stock.symbol));
+              console.log('Rendering Tier 2 symbols:', t2.map(stock => stock.symbol));
+              console.log('Filtering for codes:', Array.from(sectorCodes || []));
               // Calculate t2Filtered before the JSX
               const t2Filtered = t2FilteredByDate[date] || [];
+              let filteredStocks;
+              if (selectedSectors.length === sectors.length) {
+                // All sectors selected: show all stocks
+                filteredStocks = t2Filtered;
+              } else {
+                filteredStocks = t2Filtered.filter(stock => selectedSectorSymbols.includes(stock.symbol));
+              }
               return (
                 <Accordion key={date} defaultExpanded={expandedDates.includes(date)} onChange={handleAccordionChange(date)}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -515,7 +653,7 @@ export default function CSEInsightsPage() {
                       <Typography color="text.secondary" sx={{ mb: 2 }}>No Tier 2 picks for this date.</Typography>
                     )}
                     <Grid container spacing={2}>
-                      {t2Filtered.map((stock: any) => {
+                      {filteredStocks.map((stock: any) => {
                         const stat = symbolStats[stock.symbol] || {};
                         const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
                         const gainTilDate = stat.firstPrice && displayPrice !== null
@@ -642,7 +780,7 @@ export default function CSEInsightsPage() {
                       })}
                     </Grid>
                     {/* If both are empty */}
-                    {t1.length === 0 && t2Filtered.length === 0 && (
+                    {t1.length === 0 && filteredStocks.length === 0 && (
                       <Typography color="text.secondary" sx={{ mt: 2 }}>No picks for this date.</Typography>
                     )}
                   </AccordionDetails>

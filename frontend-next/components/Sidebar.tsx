@@ -25,18 +25,9 @@ import {
   ChevronLeft as ChevronLeftIcon,
 } from '@mui/icons-material';
 import { usePathname, useRouter } from 'next/navigation';
+import { navLinks } from './navLinks';
 
 const drawerWidth = 270;
-
-const navLinks = [
-  { icon: <Home />, label: 'Home', path: '/' },
-  { icon: <BarChart />, label: 'CSE Insights by Maverick', path: '/cse-insights' },
-  { icon: <MenuBook />, label: 'Fundamental Analysis', path: '/fundamental-analysis' },
-  { icon: <BarChart />, label: 'Technical Analysis', path: '/technical-analysis' },
-  { icon: <Book />, label: 'Guide', path: '/guide' },
-  { icon: <Notifications />, label: 'Notifications', path: '/notifications' },
-  { icon: <AccountCircle />, label: 'Profile Management', path: '/profile' },
-];
 
 const PlaceholderLogo = () => (
   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 2 }}>
