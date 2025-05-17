@@ -24,14 +24,15 @@ import {
   FormControl,
   InputLabel,
   Button,
+  Tooltip,
+  TableSortLabel,
 } from "@mui/material";
 import Sidebar from "../../components/Sidebar";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import SectorMomentumGains from '../components/SectorMomentumGains';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 // --- Types ---
 interface Sector {
@@ -65,9 +66,78 @@ interface DailySectorData {
   avgPBV: number | null;
 }
 
+interface SectorHistory {
+  date: string;
+  sector: string;
+  volume: number;
+  total_symbols: number;
+}
+
+interface SectorGain {
+  sector: string;
+  gain3: number | null;
+  gain5: number | null;
+  gain10: number | null;
+  total_symbols: number;
+}
+
 function formatNumber(num: number | null | undefined): string {
   if (num == null) return '-';
   return num.toLocaleString("en-US");
+}
+
+const fetchSectorHistory = async (): Promise<SectorHistory[]> => {
+  const res = await fetch('https://cse-maverick-be-platform.onrender.com/sector-daily-history');
+  if (!res.ok) throw new Error('Failed to fetch sector history');
+  const data = await res.json();
+  return data.data.map((item: any) => ({
+    date: item.date,
+    sector: item.sector,
+    volume: item.volume,
+    total_symbols: item.total_symbols,
+  }));
+};
+
+const calculateGains = (history: SectorHistory[]): SectorGain[] => {
+  // Group by sector
+  const sectorMap: Record<string, SectorHistory[]> = {};
+  history.forEach((item) => {
+    if (!sectorMap[item.sector]) sectorMap[item.sector] = [];
+    sectorMap[item.sector].push(item);
+  });
+  // Calculate gains
+  const gains: SectorGain[] = Object.entries(sectorMap).map(([sector, records]) => {
+    // Sort by date ascending
+    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
+    const latest = sorted[sorted.length - 1];
+    const getNthAgo = (n: number) => sorted[sorted.length - 1 - n];
+    const gain = (n: number): number | null => {
+      const nth = getNthAgo(n);
+      if (!latest || !nth || nth.volume === 0) return null;
+      return (latest.volume - nth.volume) / nth.volume;
+    };
+    return {
+      sector,
+      gain3: sorted.length > 3 ? gain(3) : null,
+      gain5: sorted.length > 5 ? gain(5) : null,
+      gain10: sorted.length > 10 ? gain(10) : null,
+      total_symbols: latest.total_symbols,
+    };
+  });
+  // Filter out sectors with total_symbols < 5
+  const filtered = gains.filter(g => g.total_symbols >= 5);
+  // Sort alphabetically
+  return filtered.sort((a, b) => a.sector.localeCompare(b.sector));
+};
+
+// Helper: median
+function median(values: number[]) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 export default function SectorAnalysisPage() {
@@ -97,6 +167,19 @@ export default function SectorAnalysisPage() {
 
   // Add state for line chart
   const [showLineChart, setShowLineChart] = useState(false);
+
+  // Add state for sector gains
+  const [gains, setGains] = useState<SectorGain[]>([]);
+
+  // Add sort state
+  const [orderBy, setOrderBy] = useState<'sector' | 'gain3' | 'gain5' | 'gain10'>('sector');
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Add state for tab and selected sectors for chart
+  const [selectedTrendSectors, setSelectedTrendSectors] = useState<string[]>([]);
+
+  // Add state for end date in Momentum Trend
+  const [trendEndDate, setTrendEndDate] = useState<string | null>(null);
 
   // Fetch sectors
   useEffect(() => {
@@ -260,6 +343,103 @@ export default function SectorAnalysisPage() {
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
+  // Prepare sector list for dropdown
+  const sectorList = useMemo(() => {
+    const unique = new Set<string>();
+    gains.forEach(g => unique.add(g.sector));
+    return Array.from(unique).sort();
+  }, [gains]);
+
+  // Prepare time series data for selected sectors (up to 5)
+  const [sectorHistory, setSectorHistory] = useState<SectorHistory[]>([]);
+  useEffect(() => {
+    fetchSectorHistory()
+      .then((history) => {
+        setGains(calculateGains(history));
+        setSectorHistory(history);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Get all available dates (sorted)
+  const allDates = useMemo(() => {
+    const dates = Array.from(new Set(sectorHistory.map(h => h.date)));
+    return dates.sort();
+  }, [sectorHistory]);
+
+  // Set default end date to latest available
+  useEffect(() => {
+    if (allDates.length && !trendEndDate) {
+      setTrendEndDate(allDates[allDates.length - 1]);
+    }
+  }, [allDates, trendEndDate]);
+
+  // Build chart data: x-axis is date, each sector is a line (normalized as %)
+  const chartData = useMemo(() => {
+    if (!selectedTrendSectors.length || !trendEndDate) return [];
+    const sectorSeries: Record<string, { date: string; value: number }[]> = {};
+    selectedTrendSectors.forEach(sector => {
+      const all = sectorHistory
+        .filter(h => h.sector === sector && h.date <= trendEndDate)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      if (all.length < 5) return;
+      // Anomaly filter: drop points < 0.5 * median of the window
+      const volumes = all.map(d => d.volume);
+      const med = median(volumes);
+      const filtered = all.filter(d => d.volume >= 0.5 * med);
+      if (filtered.length < 5) return; // Not enough consistent data
+      // Find normalization base: first point >= 0.5 * median
+      let baseIdx = 0;
+      while (baseIdx < filtered.length && filtered[baseIdx].volume < 0.5 * med) baseIdx++;
+      if (baseIdx >= filtered.length) return;
+      const newBase = filtered[baseIdx].volume;
+      if (!newBase || newBase === 0) return;
+      // Only use points from baseIdx onward
+      const normSeries = filtered.slice(baseIdx).map(d => ({ date: d.date, value: (d.volume / newBase) * 100 }));
+      if (normSeries.length < 5) return;
+      sectorSeries[sector] = normSeries;
+    });
+    // Build chart data: array of { date, [sector1]: %, [sector2]: %, ... }
+    const dates = sectorSeries[selectedTrendSectors[0]]?.map(d => d.date) || [];
+    return dates.map((date, idx) => {
+      const entry: any = { date };
+      selectedTrendSectors.forEach(sector => {
+        entry[sector] = sectorSeries[sector]?.[idx]?.value ?? null;
+      });
+      return entry;
+    });
+  }, [selectedTrendSectors, sectorHistory, trendEndDate]);
+
+  // Sorting handler
+  const handleSort = (column: 'sector' | 'gain3' | 'gain5' | 'gain10') => {
+    if (orderBy === column) {
+      setOrder(order === 'asc' ? 'desc' : 'asc');
+    } else {
+      setOrderBy(column);
+      setOrder('asc');
+    }
+  };
+
+  // Sort gains before rendering
+  const sortedGains = useMemo(() => {
+    const sorted = [...gains];
+    sorted.sort((a, b) => {
+      let aValue: string | number | null = a[orderBy];
+      let bValue: string | number | null = b[orderBy];
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+      }
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return order === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      return 0;
+    });
+    return sorted;
+  }, [gains, orderBy, order]);
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f7fafc' }}>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} isDesktop={isDesktop} />
@@ -275,16 +455,188 @@ export default function SectorAnalysisPage() {
             scrollButtons="auto"
             sx={{ borderBottom: 1, borderColor: '#e5e7eb', minHeight: 48 }}
           >
-            <Tab label="SECTORS & STOCKS" sx={{ fontWeight: 700, color: '#00b96b', borderBottom: '2.5px solid #00b96b', minWidth: 180, fontSize: { xs: '0.95rem', sm: '1.05rem' }, textTransform: 'none' }} />
+            <Tab label="Momentum" sx={{ fontWeight: 700, color: '#00b96b', borderBottom: tab === 0 ? '2.5px solid #00b96b' : undefined, minWidth: 180, fontSize: { xs: '0.95rem', sm: '1.05rem' }, textTransform: 'none' }} />
+            <Tab label="Momentum Trend" sx={{ fontWeight: 700, color: '#2563eb', borderBottom: tab === 1 ? '2.5px solid #2563eb' : undefined, minWidth: 180, fontSize: { xs: '0.95rem', sm: '1.05rem' }, textTransform: 'none' }} />
           </Tabs>
         </Paper>
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2 }}>
-              <SectorMomentumGains data={sectorData} />
-            </Paper>
+        {tab === 0 && (
+          <Grid container spacing={3} sx={{ mt: 2 }}>
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2 }}>
+                {loading && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 6 }}>
+                    <CircularProgress />
+                  </Box>
+                )}
+                {error && (
+                  <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
+                )}
+                {!loading && !error && (
+                  <Paper elevation={1} sx={{ borderRadius: 2, p: { xs: 0.5, sm: 2 }, overflowX: 'auto' }}>
+                    <TableContainer sx={{ maxHeight: 520 }}>
+                      <Table size="small" stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: 120 }}>
+                              <TableSortLabel
+                                active={orderBy === 'sector'}
+                                direction={orderBy === 'sector' ? order : 'asc'}
+                                onClick={() => handleSort('sector')}
+                              >
+                                Sector
+                              </TableSortLabel>
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: 110 }} align="right">
+                              <Tooltip title="Based on Trading activitiy in the past 3 trading days." arrow>
+                                <span>
+                                  <TableSortLabel
+                                    active={orderBy === 'gain3'}
+                                    direction={orderBy === 'gain3' ? order : 'asc'}
+                                    onClick={() => handleSort('gain3')}
+                                  >
+                                    3 Day Momentum
+                                  </TableSortLabel>
+                                </span>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: 110 }} align="right">
+                              <Tooltip title="Based on Trading activitiy in the past 5 trading days." arrow>
+                                <span>
+                                  <TableSortLabel
+                                    active={orderBy === 'gain5'}
+                                    direction={orderBy === 'gain5' ? order : 'asc'}
+                                    onClick={() => handleSort('gain5')}
+                                  >
+                                    5 Day Momentum
+                                  </TableSortLabel>
+                                </span>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: 110 }} align="right">
+                              <Tooltip title="Based on Trading activitiy in the past 10 trading days." arrow>
+                                <span>
+                                  <TableSortLabel
+                                    active={orderBy === 'gain10'}
+                                    direction={orderBy === 'gain10' ? order : 'asc'}
+                                    onClick={() => handleSort('gain10')}
+                                  >
+                                    10 Day Momentum
+                                  </TableSortLabel>
+                                </span>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {sortedGains.map((row) => (
+                            <TableRow key={row.sector} hover>
+                              <TableCell sx={{ fontWeight: 500 }}>{row.sector}</TableCell>
+                              <TableCell align="right" sx={{ color: row.gain3 != null ? (row.gain3 > 0 ? 'success.main' : row.gain3 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', fontWeight: 600 }}>
+                                {row.gain3 !== null ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    {(row.gain3 * 100).toFixed(2) + '%'}
+                                    {row.gain3 > 0 && <span style={{ color: '#16a34a', fontSize: 18, marginLeft: 4 }}>▲</span>}
+                                    {row.gain3 < 0 && <span style={{ color: '#ef4444', fontSize: 18, marginLeft: 4 }}>▼</span>}
+                                  </span>
+                                ) : '—'}
+                              </TableCell>
+                              <TableCell align="right" sx={{ color: row.gain5 != null ? (row.gain5 > 0 ? 'success.main' : row.gain5 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', fontWeight: 600 }}>
+                                {row.gain5 !== null ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    {(row.gain5 * 100).toFixed(2) + '%'}
+                                    {row.gain5 > 0 && <span style={{ color: '#16a34a', fontSize: 18, marginLeft: 4 }}>▲</span>}
+                                    {row.gain5 < 0 && <span style={{ color: '#ef4444', fontSize: 18, marginLeft: 4 }}>▼</span>}
+                                  </span>
+                                ) : '—'}
+                              </TableCell>
+                              <TableCell align="right" sx={{ color: row.gain10 != null ? (row.gain10 > 0 ? 'success.main' : row.gain10 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', fontWeight: 600 }}>
+                                {row.gain10 !== null ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    {(row.gain10 * 100).toFixed(2) + '%'}
+                                    {row.gain10 > 0 && <span style={{ color: '#16a34a', fontSize: 18, marginLeft: 4 }}>▲</span>}
+                                    {row.gain10 < 0 && <span style={{ color: '#ef4444', fontSize: 18, marginLeft: 4 }}>▼</span>}
+                                  </span>
+                                ) : '—'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Paper>
+                )}
+              </Paper>
+            </Grid>
           </Grid>
-        </Grid>
+        )}
+        {tab === 1 && (
+          <Grid container spacing={3} sx={{ mt: 2 }}>
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2 }}>
+                <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 2 }}>
+                  <FormControl size="small" sx={{ minWidth: 220 }}>
+                    <InputLabel>Sectors</InputLabel>
+                    <Select
+                      multiple
+                      value={selectedTrendSectors}
+                      label="Sectors"
+                      onChange={e => {
+                        const value = e.target.value;
+                        setSelectedTrendSectors(Array.isArray(value) ? value : []);
+                      }}
+                      renderValue={selected => selected.join(', ')}
+                    >
+                      {sectorList.map(sector => (
+                        <MenuItem key={sector} value={sector}>
+                          {sector}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <DatePicker
+                      label="End Date"
+                      value={trendEndDate ? new Date(trendEndDate) : null}
+                      onChange={date => setTrendEndDate(date ? date.toISOString().split('T')[0] : null)}
+                      minDate={allDates.length ? new Date(allDates[9]) : undefined}
+                      maxDate={allDates.length ? new Date(allDates[allDates.length - 1]) : undefined}
+                      slotProps={{ textField: { size: 'small', sx: { minWidth: 140 } } }}
+                    />
+                  </LocalizationProvider>
+                </Box>
+                {selectedTrendSectors.length > 0 && chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={340}>
+                    <LineChart data={chartData} margin={{ top: 16, right: 24, left: 0, bottom: 16 }}>
+                      <XAxis dataKey="date" tick={{ fontSize: 13 }} label={{ value: 'Date', position: 'insideBottom', offset: -5, fontSize: 14 }} />
+                      <YAxis tickFormatter={v => `${v.toFixed(0)}%`} label={{ value: 'Momentum', angle: -90, position: 'insideLeft', fontSize: 14 }} />
+                      <RechartsTooltip
+                        formatter={(value: number) => `${value.toFixed(2)}%`}
+                        labelFormatter={label => `Date: ${label}`}
+                        isAnimationActive={false}
+                      />
+                      <Legend verticalAlign="top" height={36} />
+                      {selectedTrendSectors.map((sector, idx) => (
+                        <Line
+                          key={sector}
+                          type="monotone"
+                          dataKey={sector}
+                          name={sector}
+                          stroke={['#2563eb', '#00b96b', '#ef4444', '#f59e0b', '#a21caf'][idx % 5]}
+                          strokeWidth={2.5}
+                          dot={false}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    {selectedTrendSectors.length ? 'No consistent momentum data available for the selected sector(s).' : 'Please select sectors to view their momentum trends.'}
+                  </Typography>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
+        )}
       </Box>
     </Box>
   );
