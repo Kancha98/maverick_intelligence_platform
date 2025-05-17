@@ -1,6 +1,7 @@
 'use client';
 
 import { Roboto } from 'next/font/google';
+import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { SessionProvider } from 'next-auth/react';
