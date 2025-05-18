@@ -340,6 +340,27 @@ export default function CSEInsightsPage() {
                 <InfoOutlined />
               </IconButton>
             </Tooltip>
+            <Button 
+              variant="contained" 
+              sx={{ 
+                textTransform: 'none', 
+                fontWeight: 700, 
+                bgcolor: '#2563eb', 
+                color: '#fff', 
+                borderRadius: 2, 
+                px: { xs: 1.5, sm: 2 },
+                py: { xs: 0.5, sm: 1 },
+                minWidth: { xs: 0, sm: 120 },
+                height: { xs: 40, sm: 44 },
+                fontSize: { xs: '0.95rem', sm: '1rem' },
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                '&:hover': { bgcolor: '#1d4ed8' }
+              }}
+              href="/#premium"
+            >
+              Premium
+            </Button>
           </Toolbar>
         </AppBar>
         {showDisclaimer && (

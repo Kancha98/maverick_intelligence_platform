@@ -43,6 +43,8 @@ import { useInView } from 'react-intersection-observer';
 import { alpha } from '@mui/material/styles';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
 import SwipeIcon from '@mui/icons-material/Swipe';
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
 // --- Types ---
 interface Sector {
@@ -603,13 +605,18 @@ export default function SectorAnalysisPage() {
                   bgcolor: '#2563eb', 
                   color: '#fff', 
                   borderRadius: 2, 
-                  px: { xs: 1, sm: 2 },
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  px: { xs: 1.5, sm: 2 },
+                  py: { xs: 0.5, sm: 1 },
+                  minWidth: { xs: 0, sm: 120 },
+                  height: { xs: 40, sm: 44 },
+                  fontSize: { xs: '0.95rem', sm: '1rem' },
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
                   '&:hover': { bgcolor: '#1d4ed8' }
                 }}
                 href="/#premium"
               >
-                $ Premium Access
+                Premium
               </Button>
             </Box>
           </Toolbar>
@@ -829,6 +836,33 @@ export default function SectorAnalysisPage() {
                         </TableBody>
                       </Table>
                     </TableContainer>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 1 }}>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        endIcon={<ArrowForwardIosIcon sx={{ fontSize: 18 }} />}
+                        href="/cse-insights"
+                        sx={{
+                          borderRadius: 999,
+                          px: 2,
+                          py: 0.7,
+                          fontWeight: 500,
+                          fontSize: { xs: '0.97rem', sm: '1.03rem' },
+                          boxShadow: '0 1px 4px rgba(25, 118, 210, 0.07)',
+                          textTransform: 'none',
+                          bgcolor: '#f3f8fd',
+                          color: '#2563eb',
+                          borderColor: '#b6d4fa',
+                          minWidth: 0,
+                          maxWidth: 340,
+                          width: '100%',
+                          justifyContent: 'center',
+                          '&:hover': { bgcolor: '#e3f2fd', borderColor: '#2563eb', color: '#1976d2' },
+                        }}
+                      >
+                        Click here to Navigate to pick the best counters of a sector!
+                      </Button>
+                    </Box>
                   </Paper>
                 )}
               </Paper>

@@ -254,8 +254,8 @@ export default function DashboardPage() {
               align="center" 
               sx={{ mb: 3, color: '#222', fontSize: { xs: '2rem', md: '2.2rem' } }}
             >
-              Unlock Premium Features
-            </Typography>
+            Unlock Premium Features
+          </Typography>
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 4, md: 3 }, justifyContent: 'center', alignItems: 'stretch', mb: 3 }}>
               {/* Early Bird Offer Card */}
               <Box sx={{ position: 'relative', flex: 1, minWidth: 280, maxWidth: 380, mb: { xs: 3, md: 0 } }}>
@@ -359,11 +359,11 @@ export default function DashboardPage() {
                       rel="noopener noreferrer"
                       sx={{ bgcolor: '#18181b', color: '#fff', fontWeight: 700, borderRadius: 2, py: 1.2, mt: 1, fontSize: 17, '&:hover': { bgcolor: '#2563eb' } }}
                     >
-                      Join on Patreon
-                    </Button>
-                  </CardContent>
-                </MUICard>
-              </Box>
+                  Join on Patreon
+                </Button>
+              </CardContent>
+            </MUICard>
+          </Box>
             </Box>
             <Paper elevation={0} sx={{ mt: 3, p: 2, borderRadius: 2, bgcolor: '#f3f6fa', textAlign: 'center', fontSize: 16, color: '#666', maxWidth: 600, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
               <InfoOutlinedIcon sx={{ color: '#2563eb', fontSize: 22, mr: 1 }} />
