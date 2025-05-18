@@ -596,16 +596,20 @@ export default function SectorAnalysisPage() {
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Button 
-                startIcon={<AccountCircle />} 
+                variant="contained" 
                 sx={{ 
                   textTransform: 'none', 
                   fontWeight: 700, 
-                  color: '#222',
+                  bgcolor: '#2563eb', 
+                  color: '#fff', 
+                  borderRadius: 2, 
+                  px: { xs: 1, sm: 2 },
                   fontSize: { xs: '0.875rem', sm: '1rem' },
-                  px: { xs: 1, sm: 2 }
+                  '&:hover': { bgcolor: '#1d4ed8' }
                 }}
+                href="/#premium"
               >
-                Account
+                $ Premium Access
               </Button>
             </Box>
           </Toolbar>

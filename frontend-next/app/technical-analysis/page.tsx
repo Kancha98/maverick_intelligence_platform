@@ -38,6 +38,11 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 
 // Register Chart.js components
 ChartJS.register(
@@ -566,57 +571,166 @@ export default function TechnicalAnalysisPage() {
         overflow: 'hidden'
       }}>
         {/* Top Bar */}
-        <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: 'white', boxShadow: 'none', borderBottom: '1px solid #eee', px: 2 }}>
-          <Toolbar sx={{ justifyContent: 'space-between', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: 'white', boxShadow: 'none', borderBottom: '1px solid #eee', px: { xs: 1, sm: 2 }, mb: { xs: 1, sm: 2 } }}>
+          <Toolbar sx={{ justifyContent: 'space-between', gap: 2, minHeight: { xs: 56, sm: 64 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
               {!drawerOpen && (
-                <IconButton edge="start" aria-label="menu" onClick={() => setDrawerOpen(true)} sx={{ color: '#000', mr: 2 }}>
+                <IconButton edge="start" aria-label="menu" onClick={() => setDrawerOpen(true)} sx={{ color: '#000', mr: 1, p: { xs: 1, sm: 1.5 } }}>
                   <MenuIcon />
                 </IconButton>
               )}
-              <Typography variant="h6" component="h1" fontWeight={700}>
+              <Typography variant="h4" fontWeight={800} sx={{ color: '#222', fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
                 Technical Analysis
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Button 
-                startIcon={<RefreshIcon />} 
-                onClick={refreshData} 
-                sx={{ 
-                  textTransform: 'none',
-                  display: { xs: 'none', sm: 'flex' }
-                }}
-              >
-                Refresh Data
-              </Button>
-              <IconButton 
-                onClick={refreshData}
-                color="primary" 
-                sx={{ 
-                  display: { xs: 'flex', sm: 'none' }
-                }}
-              >
-                <RefreshIcon />
-              </IconButton>
               <Button 
                 variant="contained" 
+              startIcon={<AttachMoneyIcon />} 
                 sx={{ 
                   textTransform: 'none', 
                   fontWeight: 700, 
                   bgcolor: '#2563eb', 
                   color: '#fff', 
                   borderRadius: 2, 
-                  px: { xs: 1, sm: 2 }, 
-                  '&:hover': { bgcolor: '#1d4ed8' },
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
-                }}
-              >
-                $ Premium
+                px: 1.5,
+                py: 0.5,
+                minWidth: 0,
+                fontSize: { xs: '0.9rem', sm: '1rem' },
+                boxShadow: 1,
+                height: 40,
+                '&:hover': { bgcolor: '#1d4ed8' }
+              }}
+              href="/#premium"
+            >
+              Premium
               </Button>
-            </Box>
           </Toolbar>
         </AppBar>
 
+        {/* Filters */}
+        <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 }, mb: 2, borderRadius: 3, boxShadow: 2, bgcolor: '#fafdff', maxWidth: 480, mx: 'auto' }}>
+          <Grid container spacing={1.5} alignItems="center">
+            <Grid item xs={12}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Start Date"
+                  value={startDate}
+                  onChange={setStartDate}
+                  slotProps={{ textField: { fullWidth: true, size: 'small', sx: { borderRadius: 2, bgcolor: '#fff' } } }}
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={12}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="End Date"
+                  value={endDate}
+                  onChange={setEndDate}
+                  slotProps={{ textField: { fullWidth: true, size: 'small', sx: { borderRadius: 2, bgcolor: '#fff' } } }}
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth size="small" sx={{ bgcolor: '#fff', borderRadius: 2 }}>
+              <InputLabel>Sector</InputLabel>
+              <Select
+                multiple
+                value={selectedSectors}
+                onChange={handleSectorChange}
+                  renderValue={selected => selected.join(', ')}
+                  sx={{ minHeight: 44 }}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                        maxHeight: 240,
+                        width: '100%',
+                    },
+                  },
+                }}
+              >
+                  <MenuItem value="all">
+                    <em>All Sectors</em>
+                  </MenuItem>
+                  {sortedSectors.map(sector => (
+                  <MenuItem key={sector.sector} value={sector.sector}>
+                    <Checkbox checked={selectedSectors.indexOf(sector.sector) > -1} />
+                    <ListItemText primary={sector.sector} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+            <Button
+              variant="contained"
+              color="primary"
+                fullWidth
+                sx={{ fontWeight: 700, borderRadius: 2, py: 1.2, fontSize: '1rem', minHeight: 44, boxShadow: 1, letterSpacing: 0.5, maxWidth: '100%', overflow: 'hidden', whiteSpace: 'nowrap' }}
+                onClick={filterByDateRange}
+                aria-label="Apply date filter"
+            >
+              Apply Filter
+            </Button>
+            </Grid>
+          </Grid>
+          <Divider sx={{ mt: 2 }} />
+        </Paper>
+
+              {/* Tabs for different analysis sections */}
+        <Box sx={{ mb: 3, maxWidth: 520, mx: 'auto', mt: 2 }}>
+                <Tabs 
+                  value={activeTab} 
+                  onChange={handleTabChange}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{ 
+              borderBottom: 2, 
+              borderColor: '#2563eb',
+                    '& .MuiTab-root': {
+                fontSize: { xs: '0.95rem', sm: '1.05rem' },
+                      px: { xs: 1, sm: 2 },
+                minWidth: { xs: 'auto', sm: 120 },
+                fontWeight: 700,
+                minHeight: 44
+              },
+              '& .Mui-selected': {
+                color: '#2563eb',
+                fontWeight: 800,
+                bgcolor: 'rgba(37,99,235,0.07)',
+                borderRadius: 2
+              },
+              mb: 1
+            }}
+            TabIndicatorProps={{ style: { height: 4, background: '#2563eb', borderRadius: 2 } }}
+                >
+                  <Tab 
+                    label="Bullish Volumes" 
+                    icon={<TrendingUpIcon />} 
+                    iconPosition="start"
+              sx={{ textTransform: 'none' }}
+                  />
+                  <Tab 
+                    label="Potential Reversals" 
+                    icon={<PriceChangeIcon />} 
+                    iconPosition="start"
+              sx={{ textTransform: 'none' }}
+                  />
+                  <Tab 
+                    label="Top Performers" 
+                    icon={<ShowChartIcon />} 
+                    iconPosition="start"
+              sx={{ textTransform: 'none' }}
+                  />
+                  <Tab 
+                    label="DIY Analysis" 
+                    icon={<SearchIcon />} 
+                    iconPosition="start"
+              sx={{ textTransform: 'none' }}
+                  />
+                </Tabs>
+          <Divider sx={{ mb: 2 }} />
+              </Box>
+              
         {/* Main Content */}
         <Box sx={{ 
           flexGrow: 1, 
@@ -631,102 +745,7 @@ export default function TechnicalAnalysisPage() {
             <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
               An intelligent assistant to help you discover high-potential stocks by leveraging technical analysis tools!
             </Typography>
-            <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
-              <Typography variant="body2">
-                <strong>Note:</strong> This app is for Research purposes only. Please do your own research before making any investment decisions.
-              </Typography>
-            </Alert>
             <Divider />
-          </Box>
-          
-          {/* Date filter */}
-          <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            mb: 3,
-            bgcolor: '#fff',
-            p: 2,
-            borderRadius: 2,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            flexWrap: { xs: 'wrap', sm: 'nowrap' },
-          }}>
-            <FormControl sx={{ minWidth: 180 }} size="small">
-              <InputLabel>Sector</InputLabel>
-              <Select
-                multiple
-                value={selectedSectors}
-                onChange={handleSectorChange}
-                label="Sector"
-                renderValue={(selected) => {
-                  if (selected.length === 0 || selected.length === sortedSectors.length) return 'All Sectors';
-                  if (selected.length <= 3) return selected.join(', ');
-                  return `${selected.length} Sectors Selected`;
-                }}
-                sx={{ minWidth: 120, maxWidth: 220, background: '#fff' }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 320,
-                      background: '#fff',
-                    },
-                  },
-                }}
-              >
-                {sortedSectors.map((sector) => (
-                  <MenuItem key={sector.sector} value={sector.sector}>
-                    <Checkbox checked={selectedSectors.indexOf(sector.sector) > -1} />
-                    <ListItemText primary={sector.sector} />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={selectedSectors.length === sortedSectors.length && sortedSectors.length > 0}
-                  indeterminate={selectedSectors.length > 0 && selectedSectors.length < sortedSectors.length}
-                  onChange={e => {
-                    if (e.target.checked) {
-                      setSelectedSectors(sortedSectors.map(s => s.sector));
-                    } else {
-                      setSelectedSectors([]);
-                    }
-                  }}
-                  sx={{ p: 0.5 }}
-                />
-              }
-              label="Select All"
-              sx={{ ml: 0.5, mr: 1, whiteSpace: 'nowrap', '.MuiFormControlLabel-label': { fontSize: { xs: 13, sm: 15 } } }}
-            />
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Start Date"
-                value={startDate}
-                onChange={(newDate: Date | null) => setStartDate(newDate)}
-                slotProps={{ textField: { size: 'small', sx: { minWidth: 120 } } }}
-              />
-              <DatePicker
-                label="End Date"
-                value={endDate}
-                onChange={(newDate: Date | null) => setEndDate(newDate)}
-                slotProps={{ textField: { size: 'small', sx: { minWidth: 120 } } }}
-              />
-            </LocalizationProvider>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => {
-                if (selectedSectors.length > 0 && startDate && endDate) {
-                  handleApplySectorFilter();
-                  filterByDateRange();
-                }
-              }}
-              sx={{ minWidth: 110, fontWeight: 700, borderRadius: 2, py: 1, px: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
-              disabled={selectedSectors.length === 0 || !startDate || !endDate}
-            >
-              Apply Filter
-            </Button>
           </Box>
           
           {/* Only show data/results if data has been loaded (filteredData.length > 0 or loading/error). Otherwise, show a placeholder message. */}
@@ -746,50 +765,6 @@ export default function TechnicalAnalysisPage() {
             </Alert>
           ) : (
             <>
-              {/* Tabs for different analysis sections */}
-              <Box sx={{ mb: 3 }}>
-                <Tabs 
-                  value={activeTab} 
-                  onChange={handleTabChange}
-                  variant="scrollable"
-                  scrollButtons="auto"
-                  sx={{ 
-                    borderBottom: 1, 
-                    borderColor: 'divider',
-                    '& .MuiTab-root': {
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                      px: { xs: 1, sm: 2 },
-                      minWidth: { xs: 'auto', sm: 120 }
-                    }
-                  }}
-                >
-                  <Tab 
-                    label="Bullish Volumes" 
-                    icon={<TrendingUpIcon />} 
-                    iconPosition="start"
-                    sx={{ textTransform: 'none', fontWeight: 600 }}
-                  />
-                  <Tab 
-                    label="Potential Reversals" 
-                    icon={<PriceChangeIcon />} 
-                    iconPosition="start"
-                    sx={{ textTransform: 'none', fontWeight: 600 }}
-                  />
-                  <Tab 
-                    label="Top Performers" 
-                    icon={<ShowChartIcon />} 
-                    iconPosition="start"
-                    sx={{ textTransform: 'none', fontWeight: 600 }}
-                  />
-                  <Tab 
-                    label="DIY Analysis" 
-                    icon={<SearchIcon />} 
-                    iconPosition="start"
-                    sx={{ textTransform: 'none', fontWeight: 600 }}
-                  />
-                </Tabs>
-              </Box>
-              
               {/* Tab Content */}
               <Box role="tabpanel" hidden={activeTab !== 0}>
                 {activeTab === 0 && (

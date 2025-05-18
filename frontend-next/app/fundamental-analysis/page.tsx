@@ -6,7 +6,7 @@ import {
   FormControlLabel, CircularProgress, Alert, AppBar, Toolbar,
   IconButton, Paper, Grid, FormGroup, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Chip, TableSortLabel, TextField, InputAdornment,
-  Select, MenuItem, ListItemText, FormControl, InputLabel, Tooltip
+  Select, MenuItem, ListItemText, FormControl, InputLabel, Tooltip, Divider, Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import Sidebar from '../../components/Sidebar';
 import { useTheme } from '@mui/material/styles';
@@ -20,6 +20,7 @@ import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 // Define types for the financial metrics
 interface FinancialMetric {
@@ -402,370 +403,328 @@ export default function FundamentalAnalysisPage() {
           {/* Filters */}
           {!loading && metrics.length > 0 && (
             <>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'row', sm: 'row' },
-                  alignItems: 'center',
-                  flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                  gap: 1.5,
-                  mb: 2,
-                  mt: 1,
-                }}
-              >
-                <FormControl sx={{ minWidth: 140, flex: '1 1 160px' }} size="small">
-                  <InputLabel>Sector</InputLabel>
-                  <Select
-                    multiple
-                    value={selectedSectors}
-                    onChange={handleSectorChange}
-                    label="Sector"
-                    renderValue={(selected) => {
-                      if (selected.length === 0 || selected.length === sortedSectors.length) return 'All Sectors';
-                      if (selected.length <= 3) return selected.join(', ');
-                      return `${selected.length} Sectors Selected`;
-                    }}
-                    sx={{ minWidth: 120, maxWidth: 220, background: '#fff' }}
-                    MenuProps={{
-                      PaperProps: {
-                        style: {
-                          maxHeight: 320,
-                          background: '#fff',
-                        },
-                      },
-                    }}
-                  >
-                    {sortedSectors.map((sector) => (
-                      <MenuItem key={sector.sector} value={sector.sector}>
-                        <Checkbox checked={selectedSectors.indexOf(sector.sector) > -1} />
-                        <ListItemText primary={sector.sector} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Tooltip title="Select or deselect all sectors.">
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={selectedSectors.length === sortedSectors.length && sortedSectors.length > 0}
-                        indeterminate={selectedSectors.length > 0 && selectedSectors.length < sortedSectors.length}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setSelectedSectors(sortedSectors.map(s => s.sector));
-                          } else {
-                            setSelectedSectors([]);
-                          }
+              <Paper elevation={0} sx={{ p: { xs: 1, sm: 2 }, mb: 2, borderRadius: 2, bgcolor: '#fafdff' }}>
+                <Grid container spacing={{ xs: 1, sm: 2 }} alignItems="center">
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Sector</InputLabel>
+                      <Select
+                        multiple
+                        value={selectedSectors}
+                        onChange={handleSectorChange}
+                        label="Sector"
+                        renderValue={(selected) => {
+                          if (selected.length === 0 || selected.length === sortedSectors.length) return 'All Sectors';
+                          if (selected.length <= 3) return selected.join(', ');
+                          return `${selected.length} Sectors`;
                         }}
-                        sx={{ p: 0.5 }}
-                      />
-                    }
-                    label="Select All"
-                    sx={{ ml: 0.5, mr: 1, whiteSpace: 'nowrap', '.MuiFormControlLabel-label': { fontSize: { xs: 13, sm: 15 } } }}
-                  />
-                </Tooltip>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleApplySectorFilter}
-                  sx={{ minWidth: 110, fontWeight: 700, borderRadius: 2, py: 1, px: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                >
-                  Apply Filter
-                </Button>
-              </Box>
-              
-              <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 2, overflow: 'auto' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" fontWeight={700}>
-                    Search and Filter
-                  </Typography>
+                        MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 320,
+                              background: '#fff',
+                            },
+                          },
+                        }}
+                      >
+                        <MenuItem key="all" value="all">
+                          <Checkbox
+                            checked={selectedSectors.length === sortedSectors.length && sortedSectors.length > 0}
+                            indeterminate={selectedSectors.length > 0 && selectedSectors.length < sortedSectors.length}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setSelectedSectors(sortedSectors.map(s => s.sector));
+                              } else {
+                                setSelectedSectors([]);
+                              }
+                            }}
+                          />
+                          <ListItemText primary="All Sectors" />
+                        </MenuItem>
+                        {sortedSectors.map((sector) => (
+                          <MenuItem key={sector.sector} value={sector.sector}>
+                            <Checkbox checked={selectedSectors.indexOf(sector.sector) > -1} />
+                            <ListItemText primary={sector.sector} />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={2}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      fullWidth
+                      sx={{ mt: { xs: 1, sm: 0 }, fontWeight: 700, borderRadius: 2, py: 1, px: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
+                      onClick={handleApplySectorFilter}
+                      aria-label="Apply sector filter"
+                    >
+                      Apply
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      variant="outlined"
+                      placeholder="Search by symbol"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      size="small"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon />
+                          </InputAdornment>
+                        ),
+                        endAdornment: searchQuery ? (
+                          <InputAdornment position="end">
+                            <IconButton aria-label="clear search" onClick={() => setSearchQuery('')} size="small">
+                              <ClearIcon />
+                            </IconButton>
+                          </InputAdornment>
+                        ) : null,
+                      }}
+                      sx={{ mb: { xs: 1, md: 0 } }}
+                    />
+                  </Grid>
+                </Grid>
+                <Grid container spacing={{ xs: 1, md: 2 }} sx={{ mt: 1 }}>
+                  <Grid item xs={12} md={4}>
+                    <Typography gutterBottom fontSize={14} fontWeight={600}>
+                      PER
+                      <Tooltip title="Price Earnings Ratio (Price/EPS)"><InfoOutlined fontSize="small" sx={{ ml: 0.5 }} /></Tooltip>
+                    </Typography>
+                    <Slider
+                      value={perRange}
+                      onChange={(_, newValue) => setPerRange(newValue as [number, number])}
+                      valueLabelDisplay="auto"
+                      min={0}
+                      max={Math.min(100, perRange[1] * 2)}
+                      sx={{ color: '#2563eb', mx: 1 }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Typography gutterBottom fontSize={14} fontWeight={600}>
+                      PBV
+                      <Tooltip title="Price to Book Value (Price/BVPS)"><InfoOutlined fontSize="small" sx={{ ml: 0.5 }} /></Tooltip>
+                    </Typography>
+                    <Slider
+                      value={pbvRange}
+                      onChange={(_, newValue) => setPbvRange(newValue as [number, number])}
+                      valueLabelDisplay="auto"
+                      min={0}
+                      max={Math.min(20, pbvRange[1] * 2)}
+                      sx={{ color: '#2563eb', mx: 1 }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Typography gutterBottom fontSize={14} fontWeight={600}>
+                      DY (%)
+                      <Tooltip title="Dividend Yield (Dividend/Price × 100)"><InfoOutlined fontSize="small" sx={{ ml: 0.5 }} /></Tooltip>
+                    </Typography>
+                    <Slider
+                      value={dyRange}
+                      onChange={(_, newValue) => setDyRange(newValue as [number, number])}
+                      valueLabelDisplay="auto"
+                      min={0}
+                      max={Math.min(30, dyRange[1] * 2)}
+                      sx={{ color: '#2563eb', mx: 1 }}
+                    />
+                  </Grid>
+                </Grid>
+                <Box sx={{ mt: 2 }}>
                   <Button
                     variant="outlined"
                     color="primary"
                     startIcon={<ClearIcon />}
                     onClick={clearAllFilters}
-                    sx={{ borderRadius: 2 }}
+                    sx={{ borderRadius: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
                   >
                     Clear All Filters
                   </Button>
                 </Box>
-                
-                {/* Add search bar */}
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  placeholder="Search by symbol (e.g., WATA or WATA.N0000)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  sx={{ mb: 3 }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                    endAdornment: searchQuery ? (
-                      <InputAdornment position="end">
-                        <IconButton aria-label="clear search" onClick={() => setSearchQuery('')}>
-                          <ClearIcon />
-                        </IconButton>
-                      </InputAdornment>
-                    ) : null,
-                  }}
-                />
-                
-                <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                  Filter by Metrics
-                </Typography>
-                
-                <Grid container spacing={{ xs: 2, md: 3 }}>
-                  {/* PER Range Slider */}
-                  <Grid item xs={12} md={4}>
-                    <Typography gutterBottom>
-                      Price Earnings Ratio (PER)
-                      <IconButton size="small" sx={{ ml: 1 }} aria-label="PER info">
-                        <InfoOutlined fontSize="small" />
-                      </IconButton>
-                    </Typography>
-                    <Box sx={{ px: 1 }}>
-                      <Slider
-                        value={perRange}
-                        onChange={(_, newValue) => setPerRange(newValue as [number, number])}
-                        valueLabelDisplay="auto"
-                        min={0}
-                        max={Math.min(100, perRange[1] * 2)}
-                        sx={{ color: '#2563eb' }}
-                      />
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">{perRange[0].toFixed(1)}</Typography>
-                        <Typography variant="body2" color="text.secondary">{perRange[1].toFixed(1)}</Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                  
-                  {/* PBV Range Slider */}
-                  <Grid item xs={12} md={4}>
-                    <Typography gutterBottom>
-                      Price to Book Value (PBV)
-                      <IconButton size="small" sx={{ ml: 1 }} aria-label="PBV info">
-                        <InfoOutlined fontSize="small" />
-                      </IconButton>
-                    </Typography>
-                    <Box sx={{ px: 1 }}>
-                      <Slider
-                        value={pbvRange}
-                        onChange={(_, newValue) => setPbvRange(newValue as [number, number])}
-                        valueLabelDisplay="auto"
-                        min={0}
-                        max={Math.min(20, pbvRange[1] * 2)}
-                        sx={{ color: '#2563eb' }}
-                      />
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">{pbvRange[0].toFixed(1)}</Typography>
-                        <Typography variant="body2" color="text.secondary">{pbvRange[1].toFixed(1)}</Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                  
-                  {/* Dividend Yield Slider */}
-                  <Grid item xs={12} md={4}>
-                    <Typography gutterBottom>
-                      Dividend Yield (%)
-                      <IconButton size="small" sx={{ ml: 1 }} aria-label="Dividend yield info">
-                        <InfoOutlined fontSize="small" />
-                      </IconButton>
-                    </Typography>
-                    <Box sx={{ px: 1 }}>
-                      <Slider
-                        value={dyRange}
-                        onChange={(_, newValue) => setDyRange(newValue as [number, number])}
-                        valueLabelDisplay="auto"
-                        min={0}
-                        max={Math.min(30, dyRange[1] * 2)}
-                        sx={{ color: '#2563eb' }}
-                      />
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">{dyRange[0].toFixed(1)}%</Typography>
-                        <Typography variant="body2" color="text.secondary">{dyRange[1].toFixed(1)}%</Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                </Grid>
-                
-                <Typography variant="h6" fontWeight={700} sx={{ mb: 2, mt: 3 }}>
-                  Column Selection
-                </Typography>
-                
-                <FormGroup sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
-                  {columnDefinitions.map(column => (
-                    <FormControlLabel
-                      key={column.id}
-                      control={
-                        <Checkbox
-                          checked={selectedColumns.includes(column.id)}
-                          onChange={() => handleColumnToggle(column.id)}
-                          color="primary"
+              </Paper>
+              {/* Column Selection - collapsible */}
+              <Paper elevation={0} sx={{ mb: 2, borderRadius: 2, bgcolor: '#fafdff', p: { xs: 1, sm: 2 } }}>
+                <Accordion sx={{ boxShadow: 'none', bgcolor: 'transparent' }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="column-select-content" id="column-select-header">
+                    <Typography fontWeight={700} fontSize={16}>Column Selection</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <FormGroup row sx={{ flexWrap: 'wrap', gap: 2 }}>
+                      {columnDefinitions.map(column => (
+                        <FormControlLabel
+                          key={column.id}
+                          control={
+                            <Checkbox
+                              checked={selectedColumns.includes(column.id)}
+                              onChange={() => handleColumnToggle(column.id)}
+                              color="primary"
+                            />
+                          }
+                          label={column.label}
                         />
-                      }
-                      label={column.label}
-                    />
-                  ))}
-                </FormGroup>
-              </Paper>
-              
-              {/* Results Table */}
-              <Paper elevation={0} sx={{ p: { xs: 0, sm: 1, md: 2 }, borderRadius: 2, mb: 3 }}>
-                <Typography variant="h6" fontWeight={700} sx={{ px: 2, pt: 2 }}>
-                  Financial Metrics Results
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {searchQuery ? `Showing results for "${searchQuery}"` : ''} 
-                    {filteredMetricsBySector.length} of {metrics.length} stocks
-                  </Typography>
-                </Typography>
-                
-                <TableContainer sx={{ maxHeight: { xs: 400, md: 600 }, overflowX: 'auto' }}>
-                  <Table stickyHeader sx={{ minWidth: 650 }} size="small">
-                    <TableHead>
-                      <TableRow>
-                        {selectedColumns.map(columnId => {
-                          const column = columnDefinitions.find(c => c.id === columnId);
-                          return column ? (
-                            <TableCell 
-                              key={column.id}
-                              sortDirection={orderBy === column.id ? order : false}
-                              sx={{ 
-                                fontWeight: 'bold', 
-                                whiteSpace: 'nowrap',
-                                backgroundColor: '#f8fafc',
-                                py: 1.5
-                              }}
-                            >
-                              <TableSortLabel
-                                active={orderBy === column.id}
-                                direction={orderBy === column.id ? order : 'asc'}
-                                onClick={() => handleRequestSort(column.id)}
-                              >
-                                {column.label}
-                              </TableSortLabel>
-                            </TableCell>
-                          ) : null;
-                        })}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {filteredMetricsBySector.map((row, index) => (
-                        <TableRow 
-                          key={index}
-                          sx={{ '&:nth-of-type(even)': { backgroundColor: '#f8fafc' } }}
-                        >
-                          {selectedColumns.map(columnId => {
-                            const value = row[columnId as keyof FinancialMetric];
-                            
-                            // Special formatting for code (symbol)
-                            if (columnId === 'code') {
-                              return (
-                                <TableCell key={`${index}-${columnId}`} sx={{ fontWeight: 500 }}>
-                                  {value as string}
-                                </TableCell>
-                              );
-                            }
-                            
-                            // For numeric columns, add colored indicators for certain metrics
-                            if (typeof value === 'number') {
-                              let formattedValue: string | JSX.Element = value.toFixed(2);
-                              
-                              // PER indicator (lower is generally better)
-                              if (columnId === 'PER' && value !== undefined) {
-                                const color = value < 15 ? '#16a34a' : value > 25 ? '#ef4444' : '#f59e0b';
-                                formattedValue = (
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    {value.toFixed(2)}
-                                    <Box 
-                                      component="span" 
-                                      sx={{ 
-                                        width: 8, 
-                                        height: 8, 
-                                        borderRadius: '50%', 
-                                        bgcolor: color, 
-                                        ml: 1 
-                                      }} 
-                                    />
-                                  </Box>
-                                );
-                              }
-                              
-                              // PBV indicator (lower is generally better)
-                              if (columnId === 'PBV' && value !== undefined) {
-                                const color = value < 1.5 ? '#16a34a' : value > 3 ? '#ef4444' : '#f59e0b';
-                                formattedValue = (
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    {value.toFixed(2)}
-                                    <Box 
-                                      component="span" 
-                                      sx={{ 
-                                        width: 8, 
-                                        height: 8, 
-                                        borderRadius: '50%', 
-                                        bgcolor: color, 
-                                        ml: 1 
-                                      }} 
-                                    />
-                                  </Box>
-                                );
-                              }
-                              
-                              // DY(%) indicator (higher is generally better)
-                              if (columnId === 'DY(%)' && value !== undefined) {
-                                const color = value > 5 ? '#16a34a' : value < 2 ? '#ef4444' : '#f59e0b';
-                                formattedValue = (
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    {value.toFixed(1)}%
-                                    <Box 
-                                      component="span" 
-                                      sx={{ 
-                                        width: 8, 
-                                        height: 8, 
-                                        borderRadius: '50%', 
-                                        bgcolor: color, 
-                                        ml: 1 
-                                      }} 
-                                    />
-                                  </Box>
-                                );
-                              }
-                              
-                              return (
-                                <TableCell 
-                                  key={`${index}-${columnId}`} 
-                                  align="right"
-                                  sx={{ whiteSpace: 'nowrap' }}
-                                >
-                                  {formattedValue}
-                                </TableCell>
-                              );
-                            }
-                            
-                            return (
-                              <TableCell key={`${index}-${columnId}`}>
-                                {value === undefined || value === null ? '—' : value.toString()}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
                       ))}
-                      
-                      {filteredMetricsBySector.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={selectedColumns.length} align="center" sx={{ py: 3 }}>
-                            No results found with the current filters.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                    </FormGroup>
+                  </AccordionDetails>
+                </Accordion>
               </Paper>
+              <Divider sx={{ mb: 2 }} />
             </>
           )}
+          
+          {/* Results Table */}
+          <Paper elevation={0} sx={{ p: { xs: 0, sm: 1, md: 2 }, borderRadius: 2, mb: 3 }}>
+            <Typography variant="h6" fontWeight={700} sx={{ px: 2, pt: 2 }}>
+              Financial Metrics Results
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {searchQuery ? `Showing results for "${searchQuery}"` : ''} 
+                {filteredMetricsBySector.length} of {metrics.length} stocks
+              </Typography>
+            </Typography>
+            
+            <TableContainer sx={{ maxHeight: { xs: 400, md: 600 }, overflowX: 'auto' }}>
+              <Table stickyHeader sx={{ minWidth: 650 }} size="small">
+                <TableHead>
+                  <TableRow>
+                    {selectedColumns.map(columnId => {
+                      const column = columnDefinitions.find(c => c.id === columnId);
+                      return column ? (
+                        <TableCell 
+                          key={column.id}
+                          sortDirection={orderBy === column.id ? order : false}
+                          sx={{ 
+                            fontWeight: 'bold', 
+                            whiteSpace: 'nowrap',
+                            backgroundColor: '#f8fafc',
+                            py: 1.5
+                          }}
+                        >
+                          <TableSortLabel
+                            active={orderBy === column.id}
+                            direction={orderBy === column.id ? order : 'asc'}
+                            onClick={() => handleRequestSort(column.id)}
+                          >
+                            {column.label}
+                          </TableSortLabel>
+                        </TableCell>
+                      ) : null;
+                    })}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredMetricsBySector.map((row, index) => (
+                    <TableRow 
+                      key={index}
+                      sx={{ '&:nth-of-type(even)': { backgroundColor: '#f8fafc' } }}
+                    >
+                      {selectedColumns.map(columnId => {
+                        const value = row[columnId as keyof FinancialMetric];
+                        
+                        // Special formatting for code (symbol)
+                        if (columnId === 'code') {
+                          return (
+                            <TableCell key={`${index}-${columnId}`} sx={{ fontWeight: 500 }}>
+                              {value as string}
+                            </TableCell>
+                          );
+                        }
+                        
+                        // For numeric columns, add colored indicators for certain metrics
+                        if (typeof value === 'number') {
+                          let formattedValue: string | JSX.Element = value.toFixed(2);
+                          
+                          // PER indicator (lower is generally better)
+                          if (columnId === 'PER' && value !== undefined) {
+                            const color = value < 15 ? '#16a34a' : value > 25 ? '#ef4444' : '#f59e0b';
+                            formattedValue = (
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                {value.toFixed(2)}
+                                <Box 
+                                  component="span" 
+                                  sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%', 
+                                    bgcolor: color, 
+                                    ml: 1 
+                                  }} 
+                                />
+                              </Box>
+                            );
+                          }
+                          
+                          // PBV indicator (lower is generally better)
+                          if (columnId === 'PBV' && value !== undefined) {
+                            const color = value < 1.5 ? '#16a34a' : value > 3 ? '#ef4444' : '#f59e0b';
+                            formattedValue = (
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                {value.toFixed(2)}
+                                <Box 
+                                  component="span" 
+                                  sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%', 
+                                    bgcolor: color, 
+                                    ml: 1 
+                                  }} 
+                                />
+                              </Box>
+                            );
+                          }
+                          
+                          // DY(%) indicator (higher is generally better)
+                          if (columnId === 'DY(%)' && value !== undefined) {
+                            const color = value > 5 ? '#16a34a' : value < 2 ? '#ef4444' : '#f59e0b';
+                            formattedValue = (
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                {value.toFixed(1)}%
+                                <Box 
+                                  component="span" 
+                                  sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%', 
+                                    bgcolor: color, 
+                                    ml: 1 
+                                  }} 
+                                />
+                              </Box>
+                            );
+                          }
+                          
+                          return (
+                            <TableCell 
+                              key={`${index}-${columnId}`} 
+                              align="right"
+                              sx={{ whiteSpace: 'nowrap' }}
+                            >
+                              {formattedValue}
+                            </TableCell>
+                          );
+                        }
+                        
+                        return (
+                          <TableCell key={`${index}-${columnId}`}>
+                            {value === undefined || value === null ? '—' : value.toString()}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                  
+                  {filteredMetricsBySector.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={selectedColumns.length} align="center" sx={{ py: 3 }}>
+                        No results found with the current filters.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
           
           {/* Footer */}
           <Box sx={{ mt: 4, textAlign: 'center' }}>

@@ -2,7 +2,7 @@
 
 import { useSession, signIn, signOut } from 'next-auth/react';
 import {
-  Box, Typography, Button, Drawer, List, ListItem, ListItemText, Divider, Avatar, ListItemIcon, Paper, Link, AppBar, Toolbar, IconButton, Card as MUICard, CardContent, CardActions
+  Box, Typography, Button, Drawer, List, ListItem, ListItemText, Divider, Avatar, ListItemIcon, Paper, Link, AppBar, Toolbar, IconButton, Card as MUICard, CardContent, CardActions, Container
 } from '@mui/material';
 import { Home, BarChart, Book, Notifications, AccountCircle, MenuBook, Logout, InsertChartOutlined, Menu as MenuIcon, ChevronLeft as ChevronLeftIcon } from '@mui/icons-material';
 import { useState } from 'react';
@@ -11,6 +11,19 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import Sidebar from '../components/Sidebar';
 import { navLinks } from '../components/navLinks';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import InsightsIcon from '@mui/icons-material/Insights';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import StarIcon from '@mui/icons-material/Star';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { FaPatreon } from 'react-icons/fa';
+import Tooltip from '@mui/material/Tooltip';
 
 const drawerWidth = 270;
 
@@ -143,9 +156,39 @@ export default function DashboardPage() {
               )}
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Button startIcon={<AccountCircle />} sx={{ textTransform: 'none', fontWeight: 700, color: '#222' }}>Account</Button>
-              <Button variant="contained" sx={{ textTransform: 'none', fontWeight: 700, bgcolor: '#2563eb', color: '#fff', borderRadius: 2, px: 2, '&:hover': { bgcolor: '#1d4ed8' } }}>
-                $ Premium Access
+              <Button 
+                startIcon={<AccountCircle />} 
+                href="/profile"
+                sx={{ 
+                  textTransform: 'none', 
+                  fontWeight: 700, 
+                  color: '#222',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  '&:hover': {
+                    bgcolor: 'rgba(0,0,0,0.04)'
+                  }
+                }}
+              >
+                Account
+              </Button>
+              <Button 
+                variant="outlined" 
+                href="/#premium"
+                sx={{ 
+                  textTransform: 'none', 
+                  fontWeight: 700, 
+                  color: '#2563eb',
+                  borderColor: '#2563eb',
+                  borderRadius: 2,
+                  px: { xs: 1.5, sm: 2 },
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  '&:hover': { 
+                    bgcolor: 'rgba(37,99,235,0.04)',
+                    borderColor: '#1d4ed8'
+                  }
+                }}
+              >
+                Premium
               </Button>
             </Box>
           </Toolbar>
@@ -203,30 +246,130 @@ export default function DashboardPage() {
           </Box>
         </Box>
         {/* Premium Section */}
-        <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', mb: 6 }}>
-          <Typography variant="h4" fontWeight={800} align="center" sx={{ mb: 3, color: '#222', fontSize: { xs: '1.5rem', md: '2.2rem' } }}>
-            Unlock Premium Features
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <MUICard sx={{ minWidth: 320, maxWidth: 360, borderRadius: 3, boxShadow: 2, bgcolor: '#fff', p: 2 }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight={700} align="center" sx={{ mb: 1 }}>Premium Membership</Typography>
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 2 }}>Support us on Patreon</Typography>
-                <Typography variant="h3" align="center" fontWeight={900} sx={{ color: '#2563eb', mb: 1 }}>$9</Typography>
-                <Typography align="center" sx={{ mb: 2 }}>/month</Typography>
-                <Box component="ul" sx={{ pl: 2, mb: 2 }}>
-                  <li>Advanced predictive analytics</li>
-                  <li>Timely market alerts</li>
-                  <li>Access to all features</li>
-                  <li>Early access to new features</li>
-                  <li>Priority customer support</li>
+        <Box id="premium" sx={{ py: { xs: 4, md: 6 }, px: { xs: 2, md: 4 }, bgcolor: 'linear-gradient(135deg, #f8fafc 60%, #eaf1fb 100%)', borderTop: '1.5px solid #e0e7ef', borderBottom: '1.5px solid #e0e7ef' }}>
+          <Container maxWidth="lg">
+            <Typography 
+              variant="h4" 
+              fontWeight={800} 
+              align="center" 
+              sx={{ mb: 3, color: '#222', fontSize: { xs: '2rem', md: '2.2rem' } }}
+            >
+              Unlock Premium Features
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 4, md: 3 }, justifyContent: 'center', alignItems: 'stretch', mb: 3 }}>
+              {/* Early Bird Offer Card */}
+              <Box sx={{ position: 'relative', flex: 1, minWidth: 280, maxWidth: 380, mb: { xs: 3, md: 0 } }}>
+                <Box sx={{ position: 'absolute', top: 18, left: -18, zIndex: 2 }}>
+                  <Box sx={{ bgcolor: '#2563eb', color: '#fff', px: 2, py: 0.5, borderRadius: 2, fontWeight: 700, fontSize: 14, boxShadow: 2, transform: 'rotate(-12deg)' }}>
+                    Best Value
+                  </Box>
                 </Box>
-                <Button variant="contained" fullWidth sx={{ bgcolor: '#2563eb', color: '#fff', fontWeight: 700, borderRadius: 2, py: 1.2, '&:hover': { bgcolor: '#1d4ed8' } }} href="https://www.patreon.com/c/CSEMaverick" target="_blank" rel="noopener noreferrer">
-                  Join on Patreon
-                </Button>
-              </CardContent>
-            </MUICard>
-          </Box>
+                <MUICard sx={{
+                  height: '100%',
+                  borderRadius: 3,
+                  boxShadow: 3,
+                  bgcolor: '#fff',
+                  p: 2,
+                  borderTop: '5px solid #2563eb',
+                  background: 'linear-gradient(135deg, #fafdff 80%, #eaf1fb 100%)',
+                  transition: 'transform 0.18s cubic-bezier(.4,2,.6,1)',
+                  '&:hover': { transform: 'scale(1.035)', boxShadow: 6 },
+                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" fontWeight={700} align="center" sx={{ mb: 0.5 }}>Early Bird Offer</Typography>
+                    <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 1 }}>Limited Time Special</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', mb: 1 }}>
+                      <Typography variant="h2" fontWeight={900} sx={{ color: '#2563eb', fontSize: { xs: 38, sm: 48 }, lineHeight: 1 }}>$80</Typography>
+                      <Typography sx={{ color: '#888', fontWeight: 500, fontSize: 22, ml: 1, mt: 1 }}>/year</Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>All the features in the Free-platform and:</Typography>
+                    <Box component="ul" sx={{ pl: 2, mb: 2, color: '#222', fontSize: 16, listStyle: 'none', p: 0 }}>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><CheckCircleIcon sx={{ fontSize: 20, mr: 1, color: '#00b96b' }} />12 months of premium access</li>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><CheckCircleIcon sx={{ fontSize: 20, mr: 1, color: '#00b96b' }} />Priority customer support</li>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><CheckCircleIcon sx={{ fontSize: 20, mr: 1, color: '#00b96b' }} />Early access to new features</li>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                        <Tooltip title="Coming soon" arrow>
+                          <HourglassEmptyIcon sx={{ fontSize: 20, mr: 1, color: '#f59e42', cursor: 'pointer' }} />
+                        </Tooltip>
+                        AI assistant
+                      </li>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                        <Tooltip title="Coming soon" arrow>
+                          <HourglassEmptyIcon sx={{ fontSize: 20, mr: 1, color: '#f59e42', cursor: 'pointer' }} />
+                        </Tooltip>
+                        Financial Documents analyzer
+                      </li>
+                    </Box>
+                    <Button 
+                      variant="contained" 
+                      fullWidth 
+                      startIcon={<StarIcon />} 
+                      sx={{ bgcolor: '#2563eb', color: '#fff', fontWeight: 700, borderRadius: 2, py: 1.2, mt: 1, fontSize: 17, '&:hover': { bgcolor: '#1d4ed8' } }}
+                    >
+                      Contact Team
+                    </Button>
+                  </CardContent>
+                </MUICard>
+              </Box>
+              {/* Premium Membership Card */}
+              <Box sx={{ flex: 1, minWidth: 280, maxWidth: 380 }}>
+                <MUICard sx={{
+                  height: '100%',
+                  borderRadius: 3,
+                  boxShadow: 3,
+                  bgcolor: '#fff',
+                  p: 2,
+                  borderTop: '5px solid #2563eb',
+                  background: 'linear-gradient(135deg, #fafdff 80%, #eaf1fb 100%)',
+                  transition: 'transform 0.18s cubic-bezier(.4,2,.6,1)',
+                  '&:hover': { transform: 'scale(1.035)', boxShadow: 6 },
+                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" fontWeight={700} align="center" sx={{ mb: 0.5 }}>Premium Membership</Typography>
+                    <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 1 }}>Support us on Patreon</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', mb: 1 }}>
+                      <Typography variant="h2" fontWeight={900} sx={{ color: '#2563eb', fontSize: { xs: 38, sm: 48 }, lineHeight: 1 }}>$9</Typography>
+                      <Typography sx={{ color: '#888', fontWeight: 500, fontSize: 22, ml: 1, mt: 1 }}>/month</Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>All the features in the Free-platform and:</Typography>
+                    <Box component="ul" sx={{ pl: 2, mb: 2, color: '#222', fontSize: 16, listStyle: 'none', p: 0 }}>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><CheckCircleIcon sx={{ fontSize: 20, mr: 1, color: '#00b96b' }} />Advanced market analytics</li>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><CheckCircleIcon sx={{ fontSize: 20, mr: 1, color: '#00b96b' }} />Standard customer support</li>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                        <Tooltip title="Coming soon" arrow>
+                          <HourglassEmptyIcon sx={{ fontSize: 20, mr: 1, color: '#f59e42', cursor: 'pointer' }} />
+                        </Tooltip>
+                        AI assistant
+                      </li>
+                      <li style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                        <Tooltip title="Coming soon" arrow>
+                          <HourglassEmptyIcon sx={{ fontSize: 20, mr: 1, color: '#f59e42', cursor: 'pointer' }} />
+                        </Tooltip>
+                        Financial Document analyzer
+                      </li>
+                    </Box>
+                    <Button 
+                      variant="contained" 
+                      fullWidth 
+                      startIcon={<FaPatreon style={{ fontSize: 22 }} />} 
+                      href="https://www.patreon.com/c/CSEMaverick" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      sx={{ bgcolor: '#18181b', color: '#fff', fontWeight: 700, borderRadius: 2, py: 1.2, mt: 1, fontSize: 17, '&:hover': { bgcolor: '#2563eb' } }}
+                    >
+                      Join on Patreon
+                    </Button>
+                  </CardContent>
+                </MUICard>
+              </Box>
+            </Box>
+            <Paper elevation={0} sx={{ mt: 3, p: 2, borderRadius: 2, bgcolor: '#f3f6fa', textAlign: 'center', fontSize: 16, color: '#666', maxWidth: 600, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
+              <InfoOutlinedIcon sx={{ color: '#2563eb', fontSize: 22, mr: 1 }} />
+              In-app subscription coming soon. For direct bank transfer options, please contact Maverick for assistance.
+            </Paper>
+          </Container>
         </Box>
         {/* Footer */}
         <Box sx={{ width: '100%', bgcolor: '#f7fafc', borderTop: '1px solid #eee', py: 2, px: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, color: '#888' }}>
