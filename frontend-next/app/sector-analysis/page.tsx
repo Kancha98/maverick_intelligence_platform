@@ -26,6 +26,7 @@ import {
   Button,
   Tooltip,
   TableSortLabel,
+  IconButton,
 } from "@mui/material";
 import Sidebar from "../../components/Sidebar";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -33,6 +34,15 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import MenuIcon from '@mui/icons-material/Menu';
+import AccountCircle from '@mui/icons-material/AccountCircle';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import { useSwipeable } from 'react-swipeable';
+import { useInView } from 'react-intersection-observer';
+import { alpha } from '@mui/material/styles';
+import TouchAppIcon from '@mui/icons-material/TouchApp';
+import SwipeIcon from '@mui/icons-material/Swipe';
 
 // --- Types ---
 interface Sector {
@@ -143,9 +153,10 @@ function median(values: number[]) {
 export default function SectorAnalysisPage() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [tab, setTab] = useState(0);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   // Backend data states
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -181,7 +192,16 @@ export default function SectorAnalysisPage() {
   // Add state for end date in Momentum Trend
   const [trendEndDate, setTrendEndDate] = useState<string | null>(null);
 
-  // Fetch sectors
+  // Add pull-to-refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showPullToRefresh, setShowPullToRefresh] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const { ref: tableRef, inView } = useInView({
+    threshold: 0.1,
+    triggerOnce: false
+  });
+
+  // Fetch sectors on mount
   useEffect(() => {
     fetch("/api/sectors")
       .then(res => res.json())
@@ -189,7 +209,7 @@ export default function SectorAnalysisPage() {
       .catch(() => setSectors([]));
   }, []);
 
-  // Fetch stock data for the selected date
+  // Fetch stock data for the selected date on mount and when date changes
   useEffect(() => {
     if (!selectedDate) return;
     setLoading(true);
@@ -440,85 +460,312 @@ export default function SectorAnalysisPage() {
     return sorted;
   }, [gains, orderBy, order]);
 
+  // Add pull-to-refresh handlers
+  const handlePullStart = () => {
+    if (window.scrollY === 0) {
+      setShowPullToRefresh(true);
+    }
+  };
+
+  const handlePullMove = (e: TouchEvent) => {
+    if (showPullToRefresh) {
+      const distance = Math.min(e.touches[0].clientY / 3, 100);
+      setPullDistance(distance);
+    }
+  };
+
+  const handlePullEnd = async () => {
+    if (showPullToRefresh && pullDistance > 50) {
+      setIsRefreshing(true);
+      try {
+        await fetchSectorHistory();
+        setGains(calculateGains(sectorHistory));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to refresh data');
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+    setShowPullToRefresh(false);
+    setPullDistance(0);
+  };
+
+  // Add touch event listeners
+  useEffect(() => {
+    document.addEventListener('touchstart', handlePullStart);
+    document.addEventListener('touchmove', handlePullMove);
+    document.addEventListener('touchend', handlePullEnd);
+
+    return () => {
+      document.removeEventListener('touchstart', handlePullStart);
+      document.removeEventListener('touchmove', handlePullMove);
+      document.removeEventListener('touchend', handlePullEnd);
+    };
+  }, [showPullToRefresh, pullDistance]);
+
+  // Add swipe handlers for tabs
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      if (tab === 0) setTab(1);
+    },
+    onSwipedRight: () => {
+      if (tab === 1) setTab(0);
+    },
+    trackMouse: true,
+    delta: 10,
+    swipeDuration: 500,
+    touchEventOptions: { passive: false }
+  });
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f7fafc' }}>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} isDesktop={isDesktop} />
-      <Box sx={{ flexGrow: 1, width: '100%', minHeight: '100vh', bgcolor: '#f7fafc', p: { xs: 1, sm: 2, md: 3 } }}>
-        <Typography variant="h4" fontWeight={800} sx={{ mb: 2, color: '#222' }}>
-          CSE Insights by Maverick
-        </Typography>
-        <Paper elevation={0} sx={{ borderRadius: 2, bgcolor: '#fff', p: 0, mb: 2 }}>
+      <Box 
+        sx={{ 
+          flexGrow: 1, 
+          width: '100%', 
+          minHeight: '100vh', 
+          bgcolor: '#f7fafc', 
+          p: { xs: 0.5, sm: 2, md: 3 },
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Pull to refresh indicator */}
+        {showPullToRefresh && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: pullDistance,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              transition: 'height 0.2s ease-out',
+              zIndex: 1000
+            }}
+          >
+            <CircularProgress size={24} />
+          </Box>
+        )}
+
+        <AppBar 
+          position="static" 
+          color="transparent" 
+          elevation={0} 
+          sx={{ 
+            bgcolor: 'white', 
+            boxShadow: 'none', 
+            borderBottom: '1px solid #eee', 
+            px: { xs: 1, sm: 2 }, 
+            mb: { xs: 1, sm: 2 },
+            position: 'sticky',
+            top: 0,
+            zIndex: 100
+          }}
+        >
+          <Toolbar sx={{ justifyContent: 'space-between', gap: 2, minHeight: { xs: 56, sm: 64 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {!drawerOpen && (
+                <IconButton 
+                  edge="start" 
+                  aria-label="menu" 
+                  onClick={() => setDrawerOpen(true)} 
+                  sx={{ 
+                    color: '#000', 
+                    mr: 1,
+                    p: { xs: 1, sm: 1.5 }
+                  }}
+                >
+                  <MenuIcon />
+                </IconButton>
+              )}
+              <Typography 
+                variant="h4" 
+                fontWeight={800} 
+                sx={{ 
+                  color: '#222',
+                  fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                }}
+              >
+                CSE Insights
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Button 
+                startIcon={<AccountCircle />} 
+                sx={{ 
+                  textTransform: 'none', 
+                  fontWeight: 700, 
+                  color: '#222',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  px: { xs: 1, sm: 2 }
+                }}
+              >
+                Account
+              </Button>
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            borderRadius: 2, 
+            bgcolor: '#fff', 
+            p: 0, 
+            mb: { xs: 1, sm: 2 },
+            position: 'relative'
+          }}
+          {...swipeHandlers}
+        >
           <Tabs
             value={tab}
             onChange={(_, v) => setTab(v)}
             variant="scrollable"
             scrollButtons="auto"
-            sx={{ borderBottom: 1, borderColor: '#e5e7eb', minHeight: 48 }}
+            sx={{ 
+              borderBottom: 1, 
+              borderColor: '#e5e7eb', 
+              minHeight: { xs: 48, sm: 56 },
+              '& .MuiTab-root': {
+                minHeight: { xs: 48, sm: 56 },
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                px: { xs: 1, sm: 2 }
+              }
+            }}
           >
-            <Tab label="Momentum" sx={{ fontWeight: 700, color: '#00b96b', borderBottom: tab === 0 ? '2.5px solid #00b96b' : undefined, minWidth: 180, fontSize: { xs: '0.95rem', sm: '1.05rem' }, textTransform: 'none' }} />
-            <Tab label="Momentum Trend" sx={{ fontWeight: 700, color: '#2563eb', borderBottom: tab === 1 ? '2.5px solid #2563eb' : undefined, minWidth: 180, fontSize: { xs: '0.95rem', sm: '1.05rem' }, textTransform: 'none' }} />
+            <Tab 
+              label="Momentum" 
+              sx={{ 
+                fontWeight: 700, 
+                color: '#00b96b', 
+                borderBottom: tab === 0 ? '2.5px solid #00b96b' : undefined, 
+                minWidth: { xs: 120, sm: 180 }, 
+                textTransform: 'none' 
+              }} 
+            />
+            <Tab 
+              label="Momentum Trend" 
+              sx={{ 
+                fontWeight: 700, 
+                color: '#2563eb', 
+                borderBottom: tab === 1 ? '2.5px solid #2563eb' : undefined, 
+                minWidth: { xs: 120, sm: 180 }, 
+                textTransform: 'none' 
+              }} 
+            />
           </Tabs>
         </Paper>
+
         {tab === 0 && (
-          <Grid container spacing={3} sx={{ mt: 2 }}>
+          <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mt: { xs: 0.5, sm: 1 } }}>
             <Grid item xs={12}>
-              <Paper sx={{ p: 2 }}>
+              <Paper 
+                sx={{ 
+                  p: { xs: 1, sm: 2 },
+                  position: 'relative',
+                  '&:hover': {
+                    boxShadow: isMobile ? 1 : 2
+                  }
+                }}
+              >
                 {loading && (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 6 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: { xs: 3, sm: 6 } }}>
                     <CircularProgress />
                   </Box>
                 )}
                 {error && (
-                  <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
+                  <Alert 
+                    severity="error" 
+                    sx={{ 
+                      mb: { xs: 1.5, sm: 3 },
+                      '& .MuiAlert-message': {
+                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                      }
+                    }}
+                  >
+                    {error}
+                  </Alert>
                 )}
                 {!loading && !error && (
-                  <Paper elevation={1} sx={{ borderRadius: 2, p: { xs: 0.5, sm: 2 }, overflowX: 'auto' }}>
-                    <TableContainer sx={{ maxHeight: 520 }}>
-                      <Table size="small" stickyHeader>
+                  <Paper 
+                    elevation={1} 
+                    sx={{ 
+                      borderRadius: 2, 
+                      p: { xs: 0.5, sm: 2 }, 
+                      overflowX: 'auto',
+                      '&::-webkit-scrollbar': {
+                        height: { xs: 4, sm: 6 },
+                        width: { xs: 4, sm: 6 }
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        bgcolor: 'rgba(0,0,0,0.2)',
+                        borderRadius: 2
+                      }
+                    }}
+                  >
+                    <TableContainer 
+                      ref={tableRef}
+                      sx={{ 
+                        maxHeight: { xs: 400, sm: 520 },
+                        '& .MuiTableRow-root:hover': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.04)
+                        }
+                      }}
+                    >
+                      <Table size={isMobile ? "small" : "medium"} stickyHeader>
                         <TableHead>
                           <TableRow>
-                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: 120 }}>
+                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 100, sm: 120 }, py: { xs: 1, sm: 1.5 } }}>
                               <TableSortLabel
                                 active={orderBy === 'sector'}
                                 direction={orderBy === 'sector' ? order : 'asc'}
                                 onClick={() => handleSort('sector')}
+                                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                               >
                                 Sector
                               </TableSortLabel>
                             </TableCell>
-                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: 110 }} align="right">
-                              <Tooltip title="Based on Trading activitiy in the past 3 trading days." arrow>
+                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
+                              <Tooltip title="Based on Trading activity in the past 3 trading days." arrow>
                                 <span>
                                   <TableSortLabel
                                     active={orderBy === 'gain3'}
                                     direction={orderBy === 'gain3' ? order : 'asc'}
                                     onClick={() => handleSort('gain3')}
+                                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                                   >
                                     3 Day Momentum
                                   </TableSortLabel>
                                 </span>
                               </Tooltip>
                             </TableCell>
-                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: 110 }} align="right">
-                              <Tooltip title="Based on Trading activitiy in the past 5 trading days." arrow>
+                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
+                              <Tooltip title="Based on Trading activity in the past 5 trading days." arrow>
                                 <span>
                                   <TableSortLabel
                                     active={orderBy === 'gain5'}
                                     direction={orderBy === 'gain5' ? order : 'asc'}
                                     onClick={() => handleSort('gain5')}
+                                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                                   >
                                     5 Day Momentum
                                   </TableSortLabel>
                                 </span>
                               </Tooltip>
                             </TableCell>
-                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: 110 }} align="right">
-                              <Tooltip title="Based on Trading activitiy in the past 10 trading days." arrow>
+                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
+                              <Tooltip title="Based on Trading activity in the past 10 trading days." arrow>
                                 <span>
                                   <TableSortLabel
                                     active={orderBy === 'gain10'}
                                     direction={orderBy === 'gain10' ? order : 'asc'}
                                     onClick={() => handleSort('gain10')}
+                                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                                   >
                                     10 Day Momentum
                                   </TableSortLabel>
@@ -530,31 +777,46 @@ export default function SectorAnalysisPage() {
                         <TableBody>
                           {sortedGains.map((row) => (
                             <TableRow key={row.sector} hover>
-                              <TableCell sx={{ fontWeight: 500 }}>{row.sector}</TableCell>
-                              <TableCell align="right" sx={{ color: row.gain3 != null ? (row.gain3 > 0 ? 'success.main' : row.gain3 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', fontWeight: 600 }}>
+                              <TableCell sx={{ fontWeight: 500, py: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>{row.sector}</TableCell>
+                              <TableCell align="right" sx={{ 
+                                color: row.gain3 != null ? (row.gain3 > 0 ? 'success.main' : row.gain3 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', 
+                                fontWeight: 600,
+                                py: { xs: 1, sm: 1.5 },
+                                fontSize: { xs: '0.875rem', sm: '1rem' }
+                              }}>
                                 {row.gain3 !== null ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                                     {(row.gain3 * 100).toFixed(2) + '%'}
-                                    {row.gain3 > 0 && <span style={{ color: '#16a34a', fontSize: 18, marginLeft: 4 }}>▲</span>}
-                                    {row.gain3 < 0 && <span style={{ color: '#ef4444', fontSize: 18, marginLeft: 4 }}>▼</span>}
+                                    {row.gain3 > 0 && <span style={{ color: '#16a34a', marginLeft: 4 }}>▲</span>}
+                                    {row.gain3 < 0 && <span style={{ color: '#ef4444', marginLeft: 4 }}>▼</span>}
                                   </span>
                                 ) : '—'}
                               </TableCell>
-                              <TableCell align="right" sx={{ color: row.gain5 != null ? (row.gain5 > 0 ? 'success.main' : row.gain5 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', fontWeight: 600 }}>
+                              <TableCell align="right" sx={{ 
+                                color: row.gain5 != null ? (row.gain5 > 0 ? 'success.main' : row.gain5 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', 
+                                fontWeight: 600,
+                                py: { xs: 1, sm: 1.5 },
+                                fontSize: { xs: '0.875rem', sm: '1rem' }
+                              }}>
                                 {row.gain5 !== null ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                                     {(row.gain5 * 100).toFixed(2) + '%'}
-                                    {row.gain5 > 0 && <span style={{ color: '#16a34a', fontSize: 18, marginLeft: 4 }}>▲</span>}
-                                    {row.gain5 < 0 && <span style={{ color: '#ef4444', fontSize: 18, marginLeft: 4 }}>▼</span>}
+                                    {row.gain5 > 0 && <span style={{ color: '#16a34a', marginLeft: 4 }}>▲</span>}
+                                    {row.gain5 < 0 && <span style={{ color: '#ef4444', marginLeft: 4 }}>▼</span>}
                                   </span>
                                 ) : '—'}
                               </TableCell>
-                              <TableCell align="right" sx={{ color: row.gain10 != null ? (row.gain10 > 0 ? 'success.main' : row.gain10 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', fontWeight: 600 }}>
+                              <TableCell align="right" sx={{ 
+                                color: row.gain10 != null ? (row.gain10 > 0 ? 'success.main' : row.gain10 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', 
+                                fontWeight: 600,
+                                py: { xs: 1, sm: 1.5 },
+                                fontSize: { xs: '0.875rem', sm: '1rem' }
+                              }}>
                                 {row.gain10 !== null ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                                     {(row.gain10 * 100).toFixed(2) + '%'}
-                                    {row.gain10 > 0 && <span style={{ color: '#16a34a', fontSize: 18, marginLeft: 4 }}>▲</span>}
-                                    {row.gain10 < 0 && <span style={{ color: '#ef4444', fontSize: 18, marginLeft: 4 }}>▼</span>}
+                                    {row.gain10 > 0 && <span style={{ color: '#16a34a', marginLeft: 4 }}>▲</span>}
+                                    {row.gain10 < 0 && <span style={{ color: '#ef4444', marginLeft: 4 }}>▼</span>}
                                   </span>
                                 ) : '—'}
                               </TableCell>
@@ -569,12 +831,39 @@ export default function SectorAnalysisPage() {
             </Grid>
           </Grid>
         )}
+
         {tab === 1 && (
-          <Grid container spacing={3} sx={{ mt: 2 }}>
+          <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mt: { xs: 0.5, sm: 1 } }}>
             <Grid item xs={12}>
-              <Paper sx={{ p: 2 }}>
-                <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 2 }}>
-                  <FormControl size="small" sx={{ minWidth: 220 }}>
+              <Paper 
+                sx={{ 
+                  p: { xs: 1, sm: 2 },
+                  position: 'relative',
+                  '&:hover': {
+                    boxShadow: isMobile ? 1 : 2
+                  }
+                }}
+              >
+                <Box sx={{ 
+                  mb: { xs: 2, sm: 3 }, 
+                  display: 'flex', 
+                  flexDirection: { xs: 'column', sm: 'row' }, 
+                  alignItems: { xs: 'stretch', sm: 'center' }, 
+                  gap: { xs: 1, sm: 2 } 
+                }}>
+                  <FormControl 
+                    size="small" 
+                    sx={{ 
+                      minWidth: { xs: '100%', sm: 220 },
+                      '& .MuiOutlinedInput-root': {
+                        '&:hover': {
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'primary.main'
+                          }
+                        }
+                      }
+                    }}
+                  >
                     <InputLabel>Sectors</InputLabel>
                     <Select
                       multiple
@@ -585,9 +874,15 @@ export default function SectorAnalysisPage() {
                         setSelectedTrendSectors(Array.isArray(value) ? value : []);
                       }}
                       renderValue={selected => selected.join(', ')}
+                      sx={{ 
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
+                        '& .MuiSelect-select': {
+                          py: { xs: 1, sm: 1.5 }
+                        }
+                      }}
                     >
                       {sectorList.map(sector => (
-                        <MenuItem key={sector} value={sector}>
+                        <MenuItem key={sector} value={sector} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                           {sector}
                         </MenuItem>
                       ))}
@@ -600,42 +895,137 @@ export default function SectorAnalysisPage() {
                       onChange={date => setTrendEndDate(date ? date.toISOString().split('T')[0] : null)}
                       minDate={allDates.length ? new Date(allDates[9]) : undefined}
                       maxDate={allDates.length ? new Date(allDates[allDates.length - 1]) : undefined}
-                      slotProps={{ textField: { size: 'small', sx: { minWidth: 140 } } }}
+                      slotProps={{ 
+                        textField: { 
+                          size: 'small', 
+                          sx: { 
+                            minWidth: { xs: '100%', sm: 140 },
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            '& .MuiOutlinedInput-root': {
+                              '&:hover': {
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: 'primary.main'
+                                }
+                              }
+                            }
+                          } 
+                        } 
+                      }}
                     />
                   </LocalizationProvider>
                 </Box>
                 {selectedTrendSectors.length > 0 && chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={340}>
-                    <LineChart data={chartData} margin={{ top: 16, right: 24, left: 0, bottom: 16 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 13 }} label={{ value: 'Date', position: 'insideBottom', offset: -5, fontSize: 14 }} />
-                      <YAxis tickFormatter={v => `${v.toFixed(0)}%`} label={{ value: 'Momentum', angle: -90, position: 'insideLeft', fontSize: 14 }} />
-                      <RechartsTooltip
-                        formatter={(value: number) => `${value.toFixed(2)}%`}
-                        labelFormatter={label => `Date: ${label}`}
-                        isAnimationActive={false}
-                      />
-                      <Legend verticalAlign="top" height={36} />
-                      {selectedTrendSectors.map((sector, idx) => (
-                        <Line
-                          key={sector}
-                          type="monotone"
-                          dataKey={sector}
-                          name={sector}
-                          stroke={['#2563eb', '#00b96b', '#ef4444', '#f59e0b', '#a21caf'][idx % 5]}
-                          strokeWidth={2.5}
-                          dot={false}
+                  <Box sx={{ position: 'relative' }}>
+                    <ResponsiveContainer width="100%" height={isMobile ? 280 : 340}>
+                      <LineChart data={chartData} margin={{ top: 16, right: 24, left: 0, bottom: 16 }}>
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: isMobile ? 11 : 13 }} 
+                          label={{ 
+                            value: 'Date', 
+                            position: 'insideBottom', 
+                            offset: -5, 
+                            fontSize: isMobile ? 12 : 14 
+                          }} 
                         />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
+                        <YAxis 
+                          tickFormatter={v => `${v.toFixed(0)}%`} 
+                          tick={{ fontSize: isMobile ? 11 : 13 }}
+                          label={{ 
+                            value: 'Momentum', 
+                            angle: -90, 
+                            position: 'insideLeft', 
+                            fontSize: isMobile ? 12 : 14 
+                          }} 
+                        />
+                        <RechartsTooltip
+                          formatter={(value: number) => `${value.toFixed(2)}%`}
+                          labelFormatter={label => `Date: ${label}`}
+                          isAnimationActive={false}
+                          contentStyle={{ 
+                            fontSize: isMobile ? 12 : 14,
+                            padding: isMobile ? 8 : 12
+                          }}
+                        />
+                        <Legend 
+                          verticalAlign="top" 
+                          height={isMobile ? 28 : 36}
+                          wrapperStyle={{ fontSize: isMobile ? 12 : 14 }}
+                        />
+                        {selectedTrendSectors.map((sector, idx) => (
+                          <Line
+                            key={sector}
+                            type="monotone"
+                            dataKey={sector}
+                            name={sector}
+                            stroke={['#2563eb', '#00b96b', '#ef4444', '#f59e0b', '#a21caf'][idx % 5]}
+                            strokeWidth={isMobile ? 2 : 2.5}
+                            dot={false}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                    {isMobile && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          bgcolor: alpha(theme.palette.background.paper, 0.8),
+                          p: 1,
+                          borderRadius: 1,
+                          pointerEvents: 'none',
+                          opacity: 0.7
+                        }}
+                      >
+                        <SwipeIcon fontSize="small" />
+                        <Typography variant="caption">Swipe to zoom</Typography>
+                      </Box>
+                    )}
+                  </Box>
                 ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      mt: 2,
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      textAlign: 'center'
+                    }}
+                  >
                     {selectedTrendSectors.length ? 'No consistent momentum data available for the selected sector(s).' : 'Please select sectors to view their momentum trends.'}
                   </Typography>
                 )}
               </Paper>
             </Grid>
           </Grid>
+        )}
+
+        {/* Mobile navigation hint */}
+        {isMobile && !drawerOpen && (
+          <Box
+            sx={{
+              position: 'fixed',
+              bottom: 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              bgcolor: alpha(theme.palette.background.paper, 0.9),
+              p: 1,
+              borderRadius: 2,
+              boxShadow: 2,
+              zIndex: 1000
+            }}
+          >
+            <TouchAppIcon fontSize="small" />
+            <Typography variant="caption">Tap menu to navigate</Typography>
+          </Box>
         )}
       </Box>
     </Box>
