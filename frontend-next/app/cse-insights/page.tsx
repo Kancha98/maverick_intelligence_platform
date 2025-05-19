@@ -27,6 +27,8 @@ import {
   Button,
   Checkbox,
   Paper,
+  TableCell,
+  TableRow,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -41,6 +43,7 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { green } from '@mui/material/colors';
 
 interface StockData {
   symbol: string;
@@ -531,6 +534,11 @@ export default function CSEInsightsPage() {
                         const gainTilDate = stat.firstPrice && displayPrice !== null
                           ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
                           : '-';
+                        const count = stat.count || 1;
+                        let badgeColor = '#a7f3d0'; // light green
+                        if (count === 2) badgeColor = '#34d399';
+                        else if (count === 3) badgeColor = '#059669';
+                        else if (count >= 4) badgeColor = '#065f46';
                         return (
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
@@ -560,8 +568,8 @@ export default function CSEInsightsPage() {
                                 </Tooltip>
                                 <Box
                                   sx={{
-                                    bgcolor: 'primary.main',
-                                    color: '#111',
+                                    bgcolor: badgeColor,
+                                    color: '#fff',
                                     px: 1.2,
                                     py: 0.2,
                                     borderRadius: 2,
@@ -572,9 +580,10 @@ export default function CSEInsightsPage() {
                                     boxShadow: 1,
                                     border: '2px solid #fff',
                                     letterSpacing: 0.5,
+                                    transition: 'background 0.2s',
                                   }}
                                 >
-                                  {stat.count || 1}x
+                                  {count}x
                                 </Box>
                               </Box>
                               <Grid container spacing={0.5} sx={{ mb: 1 }}>
@@ -594,8 +603,16 @@ export default function CSEInsightsPage() {
                                   </Tooltip>
                                 </Grid>
                                 <Grid item xs={5} sx={{ textAlign: 'right' }}>{stock.relative_strength}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>First Detected</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{formatDate(stat.firstDate)}</Grid>
+                                <Grid item xs={7}>
+                                  <span style={{ color: '#ef4444', fontWeight: 500 }}>
+                                    First Detected
+                                  </span>
+                                </Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'left' }}>
+                                  <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                                    {formatDate(stat.firstDate)}
+                                  </span>
+                                </Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
                                   PER
                                   <Tooltip title="Price to Earnings Ratio (Price/EPS)">
@@ -681,6 +698,11 @@ export default function CSEInsightsPage() {
                         const gainTilDate = stat.firstPrice && displayPrice !== null
                           ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
                           : '-';
+                        const count = stat.count || 1;
+                        let badgeColor = '#a7f3d0'; // light green
+                        if (count === 2) badgeColor = '#34d399';
+                        else if (count === 3) badgeColor = '#059669';
+                        else if (count >= 4) badgeColor = '#065f46';
                         return (
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
@@ -710,8 +732,8 @@ export default function CSEInsightsPage() {
                                 </Tooltip>
                                 <Box
                                   sx={{
-                                    bgcolor: 'primary.main',
-                                    color: '#111',
+                                    bgcolor: badgeColor,
+                                    color: '#fff',
                                     px: 1.2,
                                     py: 0.2,
                                     borderRadius: 2,
@@ -722,9 +744,10 @@ export default function CSEInsightsPage() {
                                     boxShadow: 1,
                                     border: '2px solid #fff',
                                     letterSpacing: 0.5,
+                                    transition: 'background 0.2s',
                                   }}
                                 >
-                                  {stat.count || 1}x
+                                  {count}x
                                 </Box>
                               </Box>
                               <Grid container spacing={0.5} sx={{ mb: 1 }}>
@@ -744,8 +767,16 @@ export default function CSEInsightsPage() {
                                   </Tooltip>
                                 </Grid>
                                 <Grid item xs={5} sx={{ textAlign: 'right' }}>{stock.relative_strength}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>First Detected</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{formatDate(stat.firstDate)}</Grid>
+                                <Grid item xs={7}>
+                                  <span style={{ color: '#ef4444', fontWeight: 500 }}>
+                                    First Detected
+                                  </span>
+                                </Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                  <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                                    {formatDate(stat.firstDate)}
+                                  </span>
+                                </Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
                                   PER
                                   <Tooltip title="Price to Earnings Ratio (Price/EPS)">
