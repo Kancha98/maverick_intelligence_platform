@@ -407,37 +407,37 @@ export default function FundamentalAnalysisPage() {
                 <Grid container spacing={{ xs: 1, sm: 2 }} alignItems="center">
                   <Grid item xs={12} sm={6} md={4}>
                     <FormControl fullWidth size="small">
-                      <InputLabel>Sector</InputLabel>
-                      <Select
-                        multiple
-                        value={selectedSectors}
-                        onChange={handleSectorChange}
-                        label="Sector"
-                        renderValue={(selected) => {
-                          if (selected.length === 0 || selected.length === sortedSectors.length) return 'All Sectors';
-                          if (selected.length <= 3) return selected.join(', ');
+                  <InputLabel>Sector</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedSectors}
+                    onChange={handleSectorChange}
+                    label="Sector"
+                    renderValue={(selected) => {
+                      if (selected.length === 0 || selected.length === sortedSectors.length) return 'All Sectors';
+                      if (selected.length <= 3) return selected.join(', ');
                           return `${selected.length} Sectors`;
-                        }}
-                        MenuProps={{
-                          PaperProps: {
-                            style: {
-                              maxHeight: 320,
-                              background: '#fff',
-                            },
-                          },
-                        }}
-                      >
+                    }}
+                    MenuProps={{
+                      PaperProps: {
+                        style: {
+                          maxHeight: 320,
+                          background: '#fff',
+                        },
+                      },
+                    }}
+                  >
                         <MenuItem key="all" value="all">
-                          <Checkbox
-                            checked={selectedSectors.length === sortedSectors.length && sortedSectors.length > 0}
-                            indeterminate={selectedSectors.length > 0 && selectedSectors.length < sortedSectors.length}
-                            onChange={e => {
-                              if (e.target.checked) {
-                                setSelectedSectors(sortedSectors.map(s => s.sector));
-                              } else {
-                                setSelectedSectors([]);
-                              }
-                            }}
+                      <Checkbox
+                        checked={selectedSectors.length === sortedSectors.length && sortedSectors.length > 0}
+                        indeterminate={selectedSectors.length > 0 && selectedSectors.length < sortedSectors.length}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setSelectedSectors(sortedSectors.map(s => s.sector));
+                          } else {
+                            setSelectedSectors([]);
+                          }
+                        }}
                           />
                           <ListItemText primary="All Sectors" />
                         </MenuItem>
@@ -451,39 +451,39 @@ export default function FundamentalAnalysisPage() {
                     </FormControl>
                   </Grid>
                   <Grid item xs={12} sm={6} md={2}>
-                    <Button
-                      variant="contained"
-                      color="primary"
+                <Button
+                  variant="contained"
+                  color="primary"
                       fullWidth
                       sx={{ mt: { xs: 1, sm: 0 }, fontWeight: 700, borderRadius: 2, py: 1, px: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                      onClick={handleApplySectorFilter}
+                  onClick={handleApplySectorFilter}
                       aria-label="Apply sector filter"
-                    >
+                >
                       Apply
-                    </Button>
+                </Button>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      variant="outlined"
+                <TextField
+                  fullWidth
+                  variant="outlined"
                       placeholder="Search by symbol"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                       size="small"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon />
-                          </InputAdornment>
-                        ),
-                        endAdornment: searchQuery ? (
-                          <InputAdornment position="end">
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                    endAdornment: searchQuery ? (
+                      <InputAdornment position="end">
                             <IconButton aria-label="clear search" onClick={() => setSearchQuery('')} size="small">
-                              <ClearIcon />
-                            </IconButton>
-                          </InputAdornment>
-                        ) : null,
-                      }}
+                          <ClearIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ) : null,
+                  }}
                       sx={{ mb: { xs: 1, md: 0 } }}
                     />
                   </Grid>
@@ -494,42 +494,42 @@ export default function FundamentalAnalysisPage() {
                       PER
                       <Tooltip title="Price Earnings Ratio (Price/EPS)"><InfoOutlined fontSize="small" sx={{ ml: 0.5 }} /></Tooltip>
                     </Typography>
-                    <Slider
-                      value={perRange}
-                      onChange={(_, newValue) => setPerRange(newValue as [number, number])}
-                      valueLabelDisplay="auto"
-                      min={0}
-                      max={Math.min(100, perRange[1] * 2)}
+                      <Slider
+                        value={perRange}
+                        onChange={(_, newValue) => setPerRange(newValue as [number, number])}
+                        valueLabelDisplay="auto"
+                        min={0}
+                        max={Math.min(100, perRange[1] * 2)}
                       sx={{ color: '#2563eb', mx: 1 }}
-                    />
+                      />
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Typography gutterBottom fontSize={14} fontWeight={600}>
                       PBV
                       <Tooltip title="Price to Book Value (Price/BVPS)"><InfoOutlined fontSize="small" sx={{ ml: 0.5 }} /></Tooltip>
                     </Typography>
-                    <Slider
-                      value={pbvRange}
-                      onChange={(_, newValue) => setPbvRange(newValue as [number, number])}
-                      valueLabelDisplay="auto"
-                      min={0}
-                      max={Math.min(20, pbvRange[1] * 2)}
+                      <Slider
+                        value={pbvRange}
+                        onChange={(_, newValue) => setPbvRange(newValue as [number, number])}
+                        valueLabelDisplay="auto"
+                        min={0}
+                        max={Math.min(20, pbvRange[1] * 2)}
                       sx={{ color: '#2563eb', mx: 1 }}
-                    />
+                      />
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Typography gutterBottom fontSize={14} fontWeight={600}>
                       DY (%)
                       <Tooltip title="Dividend Yield (Dividend/Price × 100)"><InfoOutlined fontSize="small" sx={{ ml: 0.5 }} /></Tooltip>
                     </Typography>
-                    <Slider
-                      value={dyRange}
-                      onChange={(_, newValue) => setDyRange(newValue as [number, number])}
-                      valueLabelDisplay="auto"
-                      min={0}
-                      max={Math.min(30, dyRange[1] * 2)}
+                      <Slider
+                        value={dyRange}
+                        onChange={(_, newValue) => setDyRange(newValue as [number, number])}
+                        valueLabelDisplay="auto"
+                        min={0}
+                        max={Math.min(30, dyRange[1] * 2)}
                       sx={{ color: '#2563eb', mx: 1 }}
-                    />
+                      />
                   </Grid>
                 </Grid>
                 <Box sx={{ mt: 2 }}>
@@ -552,179 +552,179 @@ export default function FundamentalAnalysisPage() {
                   </AccordionSummary>
                   <AccordionDetails>
                     <FormGroup row sx={{ flexWrap: 'wrap', gap: 2 }}>
-                      {columnDefinitions.map(column => (
-                        <FormControlLabel
-                          key={column.id}
-                          control={
-                            <Checkbox
-                              checked={selectedColumns.includes(column.id)}
-                              onChange={() => handleColumnToggle(column.id)}
-                              color="primary"
-                            />
-                          }
-                          label={column.label}
+                  {columnDefinitions.map(column => (
+                    <FormControlLabel
+                      key={column.id}
+                      control={
+                        <Checkbox
+                          checked={selectedColumns.includes(column.id)}
+                          onChange={() => handleColumnToggle(column.id)}
+                          color="primary"
                         />
-                      ))}
-                    </FormGroup>
+                      }
+                      label={column.label}
+                    />
+                  ))}
+                </FormGroup>
                   </AccordionDetails>
                 </Accordion>
               </Paper>
               <Divider sx={{ mb: 2 }} />
             </>
           )}
-          
-          {/* Results Table */}
-          <Paper elevation={0} sx={{ p: { xs: 0, sm: 1, md: 2 }, borderRadius: 2, mb: 3 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ px: 2, pt: 2 }}>
-              Financial Metrics Results
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {searchQuery ? `Showing results for "${searchQuery}"` : ''} 
-                {filteredMetricsBySector.length} of {metrics.length} stocks
-              </Typography>
-            </Typography>
-            
-            <TableContainer sx={{ maxHeight: { xs: 400, md: 600 }, overflowX: 'auto' }}>
-              <Table stickyHeader sx={{ minWidth: 650 }} size="small">
-                <TableHead>
-                  <TableRow>
-                    {selectedColumns.map(columnId => {
-                      const column = columnDefinitions.find(c => c.id === columnId);
-                      return column ? (
-                        <TableCell 
-                          key={column.id}
-                          sortDirection={orderBy === column.id ? order : false}
-                          sx={{ 
-                            fontWeight: 'bold', 
-                            whiteSpace: 'nowrap',
-                            backgroundColor: '#f8fafc',
-                            py: 1.5
-                          }}
-                        >
-                          <TableSortLabel
-                            active={orderBy === column.id}
-                            direction={orderBy === column.id ? order : 'asc'}
-                            onClick={() => handleRequestSort(column.id)}
-                          >
-                            {column.label}
-                          </TableSortLabel>
-                        </TableCell>
-                      ) : null;
-                    })}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredMetricsBySector.map((row, index) => (
-                    <TableRow 
-                      key={index}
-                      sx={{ '&:nth-of-type(even)': { backgroundColor: '#f8fafc' } }}
-                    >
-                      {selectedColumns.map(columnId => {
-                        const value = row[columnId as keyof FinancialMetric];
-                        
-                        // Special formatting for code (symbol)
-                        if (columnId === 'code') {
-                          return (
-                            <TableCell key={`${index}-${columnId}`} sx={{ fontWeight: 500 }}>
-                              {value as string}
-                            </TableCell>
-                          );
-                        }
-                        
-                        // For numeric columns, add colored indicators for certain metrics
-                        if (typeof value === 'number') {
-                          let formattedValue: string | JSX.Element = value.toFixed(2);
-                          
-                          // PER indicator (lower is generally better)
-                          if (columnId === 'PER' && value !== undefined) {
-                            const color = value < 15 ? '#16a34a' : value > 25 ? '#ef4444' : '#f59e0b';
-                            formattedValue = (
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                {value.toFixed(2)}
-                                <Box 
-                                  component="span" 
-                                  sx={{ 
-                                    width: 8, 
-                                    height: 8, 
-                                    borderRadius: '50%', 
-                                    bgcolor: color, 
-                                    ml: 1 
-                                  }} 
-                                />
-                              </Box>
-                            );
-                          }
-                          
-                          // PBV indicator (lower is generally better)
-                          if (columnId === 'PBV' && value !== undefined) {
-                            const color = value < 1.5 ? '#16a34a' : value > 3 ? '#ef4444' : '#f59e0b';
-                            formattedValue = (
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                {value.toFixed(2)}
-                                <Box 
-                                  component="span" 
-                                  sx={{ 
-                                    width: 8, 
-                                    height: 8, 
-                                    borderRadius: '50%', 
-                                    bgcolor: color, 
-                                    ml: 1 
-                                  }} 
-                                />
-                              </Box>
-                            );
-                          }
-                          
-                          // DY(%) indicator (higher is generally better)
-                          if (columnId === 'DY(%)' && value !== undefined) {
-                            const color = value > 5 ? '#16a34a' : value < 2 ? '#ef4444' : '#f59e0b';
-                            formattedValue = (
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                {value.toFixed(1)}%
-                                <Box 
-                                  component="span" 
-                                  sx={{ 
-                                    width: 8, 
-                                    height: 8, 
-                                    borderRadius: '50%', 
-                                    bgcolor: color, 
-                                    ml: 1 
-                                  }} 
-                                />
-                              </Box>
-                            );
-                          }
-                          
-                          return (
+              
+              {/* Results Table */}
+              <Paper elevation={0} sx={{ p: { xs: 0, sm: 1, md: 2 }, borderRadius: 2, mb: 3 }}>
+                <Typography variant="h6" fontWeight={700} sx={{ px: 2, pt: 2 }}>
+                  Financial Metrics Results
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {searchQuery ? `Showing results for "${searchQuery}"` : ''} 
+                    {filteredMetricsBySector.length} of {metrics.length} stocks
+                  </Typography>
+                </Typography>
+                
+                <TableContainer sx={{ maxHeight: { xs: 400, md: 600 }, overflowX: 'auto' }}>
+                  <Table stickyHeader sx={{ minWidth: 650 }} size="small">
+                    <TableHead>
+                      <TableRow>
+                        {selectedColumns.map(columnId => {
+                          const column = columnDefinitions.find(c => c.id === columnId);
+                          return column ? (
                             <TableCell 
-                              key={`${index}-${columnId}`} 
-                              align="right"
-                              sx={{ whiteSpace: 'nowrap' }}
+                              key={column.id}
+                              sortDirection={orderBy === column.id ? order : false}
+                              sx={{ 
+                                fontWeight: 'bold', 
+                                whiteSpace: 'nowrap',
+                                backgroundColor: '#f8fafc',
+                                py: 1.5
+                              }}
                             >
-                              {formattedValue}
+                              <TableSortLabel
+                                active={orderBy === column.id}
+                                direction={orderBy === column.id ? order : 'asc'}
+                                onClick={() => handleRequestSort(column.id)}
+                              >
+                                {column.label}
+                              </TableSortLabel>
                             </TableCell>
-                          );
-                        }
-                        
-                        return (
-                          <TableCell key={`${index}-${columnId}`}>
-                            {value === undefined || value === null ? '—' : value.toString()}
+                          ) : null;
+                        })}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredMetricsBySector.map((row, index) => (
+                        <TableRow 
+                          key={index}
+                          sx={{ '&:nth-of-type(even)': { backgroundColor: '#f8fafc' } }}
+                        >
+                          {selectedColumns.map(columnId => {
+                            const value = row[columnId as keyof FinancialMetric];
+                            
+                            // Special formatting for code (symbol)
+                            if (columnId === 'code') {
+                              return (
+                                <TableCell key={`${index}-${columnId}`} sx={{ fontWeight: 500 }}>
+                                  {value as string}
+                                </TableCell>
+                              );
+                            }
+                            
+                            // For numeric columns, add colored indicators for certain metrics
+                            if (typeof value === 'number') {
+                              let formattedValue: string | JSX.Element = value.toFixed(2);
+                              
+                              // PER indicator (lower is generally better)
+                              if (columnId === 'PER' && value !== undefined) {
+                                const color = value < 15 ? '#16a34a' : value > 25 ? '#ef4444' : '#f59e0b';
+                                formattedValue = (
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    {value.toFixed(2)}
+                                    <Box 
+                                      component="span" 
+                                      sx={{ 
+                                        width: 8, 
+                                        height: 8, 
+                                        borderRadius: '50%', 
+                                        bgcolor: color, 
+                                        ml: 1 
+                                      }} 
+                                    />
+                                  </Box>
+                                );
+                              }
+                              
+                              // PBV indicator (lower is generally better)
+                              if (columnId === 'PBV' && value !== undefined) {
+                                const color = value < 1.5 ? '#16a34a' : value > 3 ? '#ef4444' : '#f59e0b';
+                                formattedValue = (
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    {value.toFixed(2)}
+                                    <Box 
+                                      component="span" 
+                                      sx={{ 
+                                        width: 8, 
+                                        height: 8, 
+                                        borderRadius: '50%', 
+                                        bgcolor: color, 
+                                        ml: 1 
+                                      }} 
+                                    />
+                                  </Box>
+                                );
+                              }
+                              
+                              // DY(%) indicator (higher is generally better)
+                              if (columnId === 'DY(%)' && value !== undefined) {
+                                const color = value > 5 ? '#16a34a' : value < 2 ? '#ef4444' : '#f59e0b';
+                                formattedValue = (
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    {value.toFixed(1)}%
+                                    <Box 
+                                      component="span" 
+                                      sx={{ 
+                                        width: 8, 
+                                        height: 8, 
+                                        borderRadius: '50%', 
+                                        bgcolor: color, 
+                                        ml: 1 
+                                      }} 
+                                    />
+                                  </Box>
+                                );
+                              }
+                              
+                              return (
+                                <TableCell 
+                                  key={`${index}-${columnId}`} 
+                                  align="right"
+                                  sx={{ whiteSpace: 'nowrap' }}
+                                >
+                                  {formattedValue}
+                                </TableCell>
+                              );
+                            }
+                            
+                            return (
+                              <TableCell key={`${index}-${columnId}`}>
+                                {value === undefined || value === null ? '—' : value.toString()}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                      
+                      {filteredMetricsBySector.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={selectedColumns.length} align="center" sx={{ py: 3 }}>
+                            No results found with the current filters.
                           </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                  
-                  {filteredMetricsBySector.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={selectedColumns.length} align="center" sx={{ py: 3 }}>
-                        No results found with the current filters.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
           
           {/* Footer */}
           <Box sx={{ mt: 4, textAlign: 'center' }}>

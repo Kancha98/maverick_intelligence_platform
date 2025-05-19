@@ -2,7 +2,7 @@
 
 import { useSession, signIn, signOut } from 'next-auth/react';
 import {
-  Box, Typography, Button, Drawer, List, ListItem, ListItemText, Divider, Avatar, ListItemIcon, Paper, Link, AppBar, Toolbar, IconButton, Card as MUICard, CardContent, CardActions, Container
+  Box, Typography, Button, Drawer, List, ListItem, ListItemText, Divider, Avatar, ListItemIcon, Paper, Link, AppBar, Toolbar, IconButton, Card as MUICard, CardContent, CardActions, Container, Modal
 } from '@mui/material';
 import { Home, BarChart, Book, Notifications, AccountCircle, MenuBook, Logout, InsertChartOutlined, Menu as MenuIcon, ChevronLeft as ChevronLeftIcon } from '@mui/icons-material';
 import { useState } from 'react';
@@ -24,6 +24,8 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { FaPatreon } from 'react-icons/fa';
 import Tooltip from '@mui/material/Tooltip';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import CloseIcon from '@mui/icons-material/Close';
 
 const drawerWidth = 270;
 
@@ -43,6 +45,7 @@ export default function DashboardPage() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const isMobile = !isDesktop;
+  const [contactOpen, setContactOpen] = useState(false);
 
   if (status === 'loading') {
     return (
@@ -306,6 +309,7 @@ export default function DashboardPage() {
                       fullWidth 
                       startIcon={<StarIcon />} 
                       sx={{ bgcolor: '#2563eb', color: '#fff', fontWeight: 700, borderRadius: 2, py: 1.2, mt: 1, fontSize: 17, '&:hover': { bgcolor: '#1d4ed8' } }}
+                      onClick={() => setContactOpen(true)}
                     >
                       Contact Team
                     </Button>
@@ -371,6 +375,63 @@ export default function DashboardPage() {
             </Paper>
           </Container>
         </Box>
+        {/* WhatsApp Contact Modal */}
+        <Modal open={contactOpen} onClose={() => setContactOpen(false)}>
+          <Box
+            sx={{
+              position: 'fixed',
+              left: isMobile ? 0 : '50%',
+              bottom: isMobile ? 0 : '50%',
+              transform: isMobile ? 'none' : 'translate(-50%, 50%)',
+              width: isMobile ? '100%' : 360,
+              bgcolor: 'background.paper',
+              borderTopLeftRadius: isMobile ? 16 : 4,
+              borderTopRightRadius: isMobile ? 16 : 4,
+              borderRadius: isMobile ? 0 : 4,
+              p: 3,
+              boxShadow: 24,
+              textAlign: 'center',
+              minHeight: 180,
+              zIndex: 2000,
+            }}
+          >
+            <IconButton
+              onClick={() => setContactOpen(false)}
+              sx={{ position: 'absolute', top: 8, right: 8 }}
+              aria-label="close"
+            >
+              <CloseIcon />
+            </IconButton>
+            <WhatsAppIcon sx={{ color: '#25D366', fontSize: 48, mb: 1 }} />
+            <Typography variant="h6" fontWeight={700} mb={1}>
+              Contact Maverick Intelligence
+            </Typography>
+            <Typography variant="body1" mb={2}>
+              Chat with our team instantly on WhatsApp!
+            </Typography>
+            <Button
+              variant="contained"
+              color="success"
+              size="large"
+              fullWidth
+              startIcon={<WhatsAppIcon />}
+              href="https://wa.me/94785531071"
+              target="_blank"
+              sx={{
+                fontWeight: 700,
+                fontSize: '1.1rem',
+                py: 1.2,
+                borderRadius: 3,
+                mb: 1,
+              }}
+            >
+              Chat on WhatsApp
+            </Button>
+            <Typography variant="caption" color="text.secondary">
+              WhatsApp: +94 785531071
+            </Typography>
+          </Box>
+        </Modal>
         {/* Footer */}
         <Box sx={{ width: '100%', bgcolor: '#f7fafc', borderTop: '1px solid #eee', py: 2, px: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, color: '#888' }}>
           <Box>Maverick Intelligence<br />© 2025 All rights reserved</Box>

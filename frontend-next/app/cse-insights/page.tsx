@@ -384,38 +384,38 @@ export default function CSEInsightsPage() {
         <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, mb: 2, borderRadius: 2, bgcolor: '#fafdff' }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} sm={4} md={3}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <DatePicker
                   label="Start Date"
-                  value={selectedDate}
-                  onChange={setSelectedDate}
+              value={selectedDate}
+              onChange={setSelectedDate}
                   slotProps={{ textField: { fullWidth: true, size: 'small' } }}
-                />
-              </LocalizationProvider>
+            />
+          </LocalizationProvider>
             </Grid>
             <Grid item xs={12} sm={8} md={5}>
               <FormControl fullWidth size="small">
-                <InputLabel id="sector-select-label">Sectors</InputLabel>
-                <Select
-                  labelId="sector-select-label"
-                  multiple
-                  value={selectedSectors}
-                  label="Sectors"
-                  onChange={e => setSelectedSectors(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-                  renderValue={(selected) => {
-                    if (selected.length === 0 || selected.length === sectors.length) return 'All Sectors';
-                    if (selected.length <= 3) return selected.join(', ');
+            <InputLabel id="sector-select-label">Sectors</InputLabel>
+            <Select
+              labelId="sector-select-label"
+              multiple
+              value={selectedSectors}
+              label="Sectors"
+              onChange={e => setSelectedSectors(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              renderValue={(selected) => {
+                if (selected.length === 0 || selected.length === sectors.length) return 'All Sectors';
+                if (selected.length <= 3) return selected.join(', ');
                     return `${selected.length} Sectors`;
-                  }}
-                  MenuProps={{
-                    PaperProps: {
-                      style: {
-                        maxHeight: 320,
+              }}
+              MenuProps={{
+                PaperProps: {
+                  style: {
+                    maxHeight: 320,
                         background: '#fff',
-                      },
-                    },
-                  }}
-                >
+                  },
+                },
+              }}
+            >
                   <MenuItem key="all" value="__all__">
                     <Checkbox
                       checked={selectedSectors.length === sectors.length && sectors.length > 0}
@@ -430,37 +430,37 @@ export default function CSEInsightsPage() {
                     />
                     <Typography variant="body2">All Sectors</Typography>
                   </MenuItem>
-                  {[...sectors].sort((a, b) => a.sector.localeCompare(b.sector)).map(s => (
-                    <MenuItem key={s.sector} value={s.sector}>
-                      <Checkbox checked={selectedSectors.indexOf(s.sector) > -1} />
-                      {s.sector}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {[...sectors].sort((a, b) => a.sector.localeCompare(b.sector)).map(s => (
+                <MenuItem key={s.sector} value={s.sector}>
+                  <Checkbox checked={selectedSectors.indexOf(s.sector) > -1} />
+                  {s.sector}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
             </Grid>
             <Grid item xs={12} sm={12} md={2}>
-              <Button
-                variant="contained"
-                color="primary"
+          <Button
+            variant="contained"
+            color="primary"
                 fullWidth
                 size="medium"
                 sx={{ minWidth: 120, mt: { xs: 1, sm: 0 } }}
-                onClick={() => {
-                  setAppliedSectors(selectedSectors);
-                  // Debug: log the codes that will be used for filtering
-                  const codes: string[] = [];
-                  selectedSectors.forEach(sector => {
-                    const found = sectors.find(s => s.sector === sector);
-                    if (found?.symbols && Array.isArray(found.symbols)) {
-                      codes.push(...found.symbols);
-                    }
-                  });
-                  console.log('Filtering for codes:', codes);
-                }}
-              >
+            onClick={() => {
+              setAppliedSectors(selectedSectors);
+              // Debug: log the codes that will be used for filtering
+              const codes: string[] = [];
+              selectedSectors.forEach(sector => {
+                const found = sectors.find(s => s.sector === sector);
+                if (found?.symbols && Array.isArray(found.symbols)) {
+                  codes.push(...found.symbols);
+                }
+              });
+              console.log('Filtering for codes:', codes);
+            }}
+          >
                 Apply
-              </Button>
+          </Button>
             </Grid>
             {tab === 1 && (
               <Grid item xs={12} sm={6} md={2}>
