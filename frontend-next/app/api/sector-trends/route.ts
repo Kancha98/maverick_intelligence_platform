@@ -41,6 +41,25 @@ function movingAverageIgnoreNaN(arr: number[], window: number): number[] {
   });
 }
 
+// Helper to find a valid base day for momentum calculation
+function findValidBase(sorted: any[], n: number, minVolume: number = 1000) {
+  // Compute median of last 20 days (or all available)
+  const recent = sorted.slice(-20).map(e => e.volume).filter(v => v != null && v > 0);
+  if (recent.length < 3) return null;
+  const sortedVol = [...recent].sort((a, b) => a - b);
+  const median = sortedVol[Math.floor(sortedVol.length / 2)];
+  // Try Nth, N+1th, ... until a base day with volume >= 20% of median and minVolume
+  for (let i = n; i < sorted.length; ++i) {
+    const idx = sorted.length - 1 - i;
+    if (idx < 0) break;
+    const base = sorted[idx];
+    if (base && base.volume != null && base.volume >= minVolume && base.volume >= 0.2 * median) {
+      return base;
+    }
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const dateParam = url.searchParams.get('date');
@@ -107,5 +126,34 @@ export async function GET(req: NextRequest) {
     total_symbols: entry.total_symbols
   }));
 
-  return NextResponse.json({ sectors: minimal });
+  // --- Calculate sector momentum (3, 5, 10 trading days) with robust base selection ---
+  // Group all raw data by sector
+  const sectorMap: Record<string, any[]> = {};
+  raw.forEach(entry => {
+    if (!sectorMap[entry.sector]) sectorMap[entry.sector] = [];
+    sectorMap[entry.sector].push(entry);
+  });
+
+  const MIN_BASE_VOLUME = 1000;
+  const sectorMomentum = Object.entries(sectorMap).map(([sector, entries]) => {
+    // Sort by date ascending
+    const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+    const len = sorted.length;
+    const latest = sorted[len - 1];
+    // Use robust base selection for momentum
+    const calcMomentum = (n: number) => {
+      const base = findValidBase(sorted, n, MIN_BASE_VOLUME);
+      if (!latest || !base) return null;
+      return (latest.volume - base.volume) / base.volume;
+    };
+    return {
+      sector,
+      gain3: calcMomentum(3),
+      gain5: calcMomentum(5),
+      gain10: calcMomentum(10),
+      total_symbols: latest.total_symbols,
+    };
+  });
+
+  return NextResponse.json({ sectors: minimal, momentum: sectorMomentum });
 }

@@ -181,8 +181,8 @@ export default function SectorAnalysisPage() {
   // Add state for line chart
   const [showLineChart, setShowLineChart] = useState(false);
 
-  // Add state for sector gains
-  const [gains, setGains] = useState<SectorGain[]>([]);
+  // Add state for momentum
+  const [momentum, setMomentum] = useState<any[]>([]);
 
   // Add sort state
   const [orderBy, setOrderBy] = useState<'sector' | 'gain3' | 'gain5' | 'gain10'>('sector');
@@ -242,9 +242,9 @@ export default function SectorAnalysisPage() {
       .catch(() => setMetrics({}));
   }, []);
 
-  // Fetch sector momentum data for Trend Analysis tab
+  // Fetch sector momentum data for Momentum tab (tab 0)
   useEffect(() => {
-    if (tab !== 1) return;
+    if (tab !== 0) return;
     setLoading(true);
     setError(null);
     let url = '/api/sector-trends';
@@ -255,12 +255,12 @@ export default function SectorAnalysisPage() {
     fetch(url)
       .then(res => res.json())
       .then(data => {
-        setMomentumData(data.momentum || []);
+        setMomentum(data.momentum || []);
         setSectorData(data.sectors || []);
         setLoading(false);
       })
       .catch(() => {
-        setError('Failed to load trend analysis data');
+        setError('Failed to load sector momentum data');
         setLoading(false);
       });
   }, [tab, selectedDate]);
@@ -368,16 +368,15 @@ export default function SectorAnalysisPage() {
   // Prepare sector list for dropdown
   const sectorList = useMemo(() => {
     const unique = new Set<string>();
-    gains.forEach(g => unique.add(g.sector));
+    momentum.forEach(g => unique.add(g.sector));
     return Array.from(unique).sort();
-  }, [gains]);
+  }, [momentum]);
 
   // Prepare time series data for selected sectors (up to 5)
   const [sectorHistory, setSectorHistory] = useState<SectorHistory[]>([]);
   useEffect(() => {
     fetchSectorHistory()
       .then((history) => {
-        setGains(calculateGains(history));
         setSectorHistory(history);
       })
       .catch((err) => setError(err.message))
@@ -433,7 +432,7 @@ export default function SectorAnalysisPage() {
     });
   }, [selectedTrendSectors, sectorHistory, trendEndDate]);
 
-  // Sorting handler
+  // Sorting handler (now for momentum)
   const handleSort = (column: 'sector' | 'gain3' | 'gain5' | 'gain10') => {
     if (orderBy === column) {
       setOrder(order === 'asc' ? 'desc' : 'asc');
@@ -444,8 +443,8 @@ export default function SectorAnalysisPage() {
   };
 
   // Sort gains before rendering
-  const sortedGains = useMemo(() => {
-    const sorted = [...gains];
+  const sortedMomentum = React.useMemo(() => {
+    const sorted = [...momentum];
     sorted.sort((a, b) => {
       let aValue: string | number | null = a[orderBy];
       let bValue: string | number | null = b[orderBy];
@@ -460,7 +459,7 @@ export default function SectorAnalysisPage() {
       return 0;
     });
     return sorted;
-  }, [gains, orderBy, order]);
+  }, [momentum, orderBy, order]);
 
   // Add pull-to-refresh handlers
   const handlePullStart = () => {
@@ -481,7 +480,6 @@ export default function SectorAnalysisPage() {
       setIsRefreshing(true);
       try {
         await fetchSectorHistory();
-        setGains(calculateGains(sectorHistory));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to refresh data');
       } finally {
@@ -742,7 +740,7 @@ export default function SectorAnalysisPage() {
                               </TableSortLabel>
                             </TableCell>
                             <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
-                              <Tooltip title="Based on Trading activity in the past 3 trading days." arrow>
+                              <Tooltip title="Based on trading activity in the past 3 trading days." arrow>
                                 <span>
                                   <TableSortLabel
                                     active={orderBy === 'gain3'}
@@ -750,13 +748,13 @@ export default function SectorAnalysisPage() {
                                     onClick={() => handleSort('gain3')}
                                     sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                                   >
-                                    3 Day Momentum
+                                    3 Trading Day Momentum
                                   </TableSortLabel>
                                 </span>
                               </Tooltip>
                             </TableCell>
                             <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
-                              <Tooltip title="Based on Trading activity in the past 5 trading days." arrow>
+                              <Tooltip title="Based on trading activity in the past 5 trading days." arrow>
                                 <span>
                                   <TableSortLabel
                                     active={orderBy === 'gain5'}
@@ -764,13 +762,13 @@ export default function SectorAnalysisPage() {
                                     onClick={() => handleSort('gain5')}
                                     sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                                   >
-                                    5 Day Momentum
+                                    5 Trading Day Momentum
                                   </TableSortLabel>
                                 </span>
                               </Tooltip>
                             </TableCell>
                             <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
-                              <Tooltip title="Based on Trading activity in the past 10 trading days." arrow>
+                              <Tooltip title="Based on trading activity in the past 10 trading days." arrow>
                                 <span>
                                   <TableSortLabel
                                     active={orderBy === 'gain10'}
@@ -778,7 +776,7 @@ export default function SectorAnalysisPage() {
                                     onClick={() => handleSort('gain10')}
                                     sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                                   >
-                                    10 Day Momentum
+                                    10 Trading Day Momentum
                                   </TableSortLabel>
                                 </span>
                               </Tooltip>
@@ -786,7 +784,7 @@ export default function SectorAnalysisPage() {
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {sortedGains.map((row) => (
+                          {sortedMomentum.map((row) => (
                             <TableRow key={row.sector} hover>
                               <TableCell sx={{ fontWeight: 500, py: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>{row.sector}</TableCell>
                               <TableCell align="right" sx={{ 
