@@ -272,7 +272,8 @@ export default function TechnicalAnalysisPage() {
       );
       
       const tier2 = formattedData.filter(stock => 
-        ['Bullish Divergence', 'Bearish Divergence'].includes(stock.rsi_divergence)
+        stock.rsi_divergence.startsWith('Bullish Divergence') ||
+        stock.rsi_divergence.startsWith('Bearish Divergence')
       );
       
       const tier3 = formattedData.filter(stock => 
@@ -355,7 +356,8 @@ export default function TechnicalAnalysisPage() {
         ['High Bullish Momentum', 'Emerging Bullish Momentum', 'Increase in weekly Volume Activity Detected'].includes(stock.volume_analysis)
       );
       const tier2 = formattedData.filter((stock: StockData) => 
-        ['Bullish Divergence', 'Bearish Divergence'].includes(stock.rsi_divergence)
+        stock.rsi_divergence.startsWith('Bullish Divergence') ||
+        stock.rsi_divergence.startsWith('Bearish Divergence')
       );
       const tier3 = formattedData.filter((stock: StockData) => 
         ['Emerging Bullish Momentum', 'High Bullish Momentum'].includes(stock.volume_analysis) &&
@@ -556,6 +558,17 @@ export default function TechnicalAnalysisPage() {
     
     console.log(`Applied DIY filters - found ${results.length} matching stocks`);
     setDiyFilteredData(getSortedData(results));
+  };
+
+  const getDivergenceLabel = (div: string) => {
+    if (div === 'Bearish Divergence') return 'Bearish Divergence (14 bars)';
+    if (div === 'Bullish Divergence') return 'Bullish Divergence (14 bars)';
+    return div;
+  };
+  const getDivergenceColor = (div: string) => {
+    if (div.startsWith('Bearish')) return 'error';
+    if (div.startsWith('Bullish')) return 'success';
+    return 'default';
   };
 
   return (
@@ -1038,16 +1051,10 @@ export default function TechnicalAnalysisPage() {
                                 </TableCell>
                                 <TableCell>
                                   <Chip 
-                                    label={stock.rsi_divergence} 
+                                    label={getDivergenceLabel(stock.rsi_divergence)} 
                                     size="small"
-                                    color={
-                                      stock.rsi_divergence === 'Bullish Divergence' ? 'success' :
-                                      stock.rsi_divergence === 'Bearish Divergence' ? 'error' : 'default'
-                                    }
-                                    sx={{ 
-                                      fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                                      height: { xs: 24, sm: 'auto' }
-                                    }}
+                                    color={getDivergenceColor(getDivergenceLabel(stock.rsi_divergence))}
+                                    sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
                                   />
                                 </TableCell>
                                 <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
