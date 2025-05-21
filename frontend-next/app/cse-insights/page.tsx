@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   Box,
   Typography,
@@ -29,6 +29,7 @@ import {
   Paper,
   TableCell,
   TableRow,
+  Skeleton,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -71,6 +72,48 @@ function formatDate(dateStr: string) {
   return `${month} ${ordinal(day)} ${year}`;
 }
 
+function LoadingCard() {
+  return (
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 3,
+        boxShadow: 2,
+        p: 2,
+        minHeight: 220,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        bgcolor: '#fff',
+        position: 'relative',
+        transition: 'box-shadow 0.2s',
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+          <Skeleton width={100} />
+        </Typography>
+      </Box>
+      <Grid container spacing={0.5} sx={{ mb: 1 }}>
+        {[...Array(12)].map((_, index) => (
+          <>
+            <Grid item xs={7} key={`label-${index}`}>
+              <Skeleton width="80%" />
+            </Grid>
+            <Grid item xs={5} key={`value-${index}`}>
+              <Skeleton width="60%" />
+            </Grid>
+          </>
+        ))}
+      </Grid>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: 2 }}>
+        <Skeleton width={100} height={40} />
+        <Skeleton width={100} height={40} />
+      </Box>
+    </Card>
+  );
+}
+
 export default function CSEInsightsPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const theme = useTheme();
@@ -101,7 +144,8 @@ export default function CSEInsightsPage() {
   const [sectors, setSectors] = useState<{ sector: string; symbols: string[] }[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [appliedSectors, setAppliedSectors] = useState<string[]>([]);
-  const [ohlcvDataBySymbol, setOhlcvDataBySymbol] = useState<Record<string, any[]>>({});
+  const [ohlcvCache, setOhlcvCache] = useState<Record<string, any[]>>({});
+  const [pendingOhlcvRequests, setPendingOhlcvRequests] = useState<Set<string>>(new Set());
 
   // Helper to get all codes for applied sectors (move this above useEffect)
   const sectorCodes = useMemo(() => {
@@ -192,22 +236,65 @@ export default function CSEInsightsPage() {
   const handleAccordionChange = (date: string) => (_: any, expanded: boolean) => {
     setExpandedDates((prev) => {
       if (expanded) {
-        // Fetch OHLCV for this date if not already fetched
+        // Get all symbols that need OHLCV data
         const allSymbols = new Set<string>();
         ['tier1Picks', 'tier2Picks'].forEach(tier => {
           (groupedPicks[date]?.[tier] || []).forEach((pick: any) => {
-            if (pick?.symbol && !ohlcvDataBySymbol[pick.symbol]) allSymbols.add(pick.symbol);
+            if (pick?.symbol && !ohlcvCache[pick.symbol]) {
+              allSymbols.add(pick.symbol);
+            }
           });
         });
-        const symbolsArr = Array.from(allSymbols);
-        if (symbolsArr.length > 0) {
-          const symbolsParam = symbolsArr.join(',');
-          fetch(`/api/ohlcv-batch?symbols=${symbolsParam}`)
-            .then(res => res.json())
-            .then(data => {
-              setOhlcvDataBySymbol(prev => ({ ...prev, ...data }));
-            });
+
+        // Only fetch symbols that aren't already in cache and aren't pending
+        const symbolsToFetch = Array.from(allSymbols).filter(symbol => 
+          !ohlcvCache[symbol] && !pendingOhlcvRequests.has(symbol)
+        );
+
+        if (symbolsToFetch.length > 0) {
+          // Mark symbols as pending
+          setPendingOhlcvRequests(prev => new Set([...prev, ...symbolsToFetch]));
+
+          // Fetch in batches of 5
+          const batchSize = 5;
+          for (let i = 0; i < symbolsToFetch.length; i += batchSize) {
+            const batch = symbolsToFetch.slice(i, i + batchSize);
+            const symbolsParam = batch.join(',');
+            
+            fetch(`/api/ohlcv-batch?symbols=${symbolsParam}`)
+              .then(res => res.json())
+              .then(data => {
+                setOhlcvCache(prev => ({ ...prev, ...data }));
+                setPendingOhlcvRequests(prev => {
+                  const newSet = new Set(prev);
+                  batch.forEach(symbol => newSet.delete(symbol));
+                  return newSet;
+                });
+              })
+              .catch(error => {
+                console.error('Error fetching OHLCV data:', error);
+                setPendingOhlcvRequests(prev => {
+                  const newSet = new Set(prev);
+                  batch.forEach(symbol => newSet.delete(symbol));
+                  return newSet;
+                });
+              });
+          }
         }
+
+        // Add logic to fetch latest prices for all symbols in the expanded date
+        const allSymbolsInExpandedDate = new Set<string>();
+        ['tier1Picks', 'tier2Picks'].forEach(tier => {
+          (groupedPicks[date]?.[tier] || []).forEach((pick: any) => {
+            if (pick?.symbol && latestPrices[pick.symbol] === undefined) {
+              allSymbolsInExpandedDate.add(pick.symbol);
+            }
+          });
+        });
+        if (allSymbolsInExpandedDate.size > 0) {
+          fetchLatestPricesForSymbols(allSymbolsInExpandedDate);
+        }
+
         return [...prev, date];
       } else {
         return prev.filter(d => d !== date);
@@ -345,7 +432,7 @@ export default function CSEInsightsPage() {
     fetch(`/api/ohlcv-batch?symbols=${symbolsParam}`)
       .then(res => res.json())
       .then(data => {
-        setOhlcvDataBySymbol(prev => ({ ...prev, ...data }));
+        setOhlcvCache(prev => ({ ...prev, ...data }));
       });
   }, [groupedPicks]);
 
@@ -542,6 +629,18 @@ export default function CSEInsightsPage() {
                       <Tooltip title="Click to view the picks of the day and the Gain til Date">
                         <InfoOutlined sx={{ ml: 1, fontSize: 18, color: 'primary.main' }} />
                       </Tooltip>
+                      {Array.from(pendingOhlcvRequests).some(symbol => 
+                        ['tier1Picks', 'tier2Picks'].some(tier => 
+                          groupedPicks[date]?.[tier]?.some((pick: any) => pick.symbol === symbol)
+                        )
+                      ) && (
+                        <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          <Typography variant="body2" color="text.secondary">
+                            Loading data...
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
@@ -555,16 +654,38 @@ export default function CSEInsightsPage() {
                     <Grid container spacing={2}>
                       {t1.map((stock: any) => {
                         const stat = symbolStats[stock.symbol] || {};
-                        const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
-                        const gainTilDate = stat.firstPrice && displayPrice !== null
+                        const displayPrice = latestPrices[stock.symbol];
+                        const gainTilDate = stat.firstPrice && typeof displayPrice === 'number'
                           ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
                           : '-';
                         const count = stat.count || 1;
-                        let badgeColor = '#a7f3d0'; // light green
+                        let badgeColor = '#a7f3d0';
                         if (count === 2) badgeColor = '#34d399';
                         else if (count === 3) badgeColor = '#059669';
                         else if (count >= 4) badgeColor = '#065f46';
-                        const ohlcv = ohlcvDataBySymbol[stock.symbol] || [];
+                        const ohlcv = ohlcvCache[stock.symbol] || [];
+                        const isLoading = pendingOhlcvRequests.has(stock.symbol);
+
+                        if (isLoading) {
+                          return (
+                            <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                              <LoadingCard />
+                            </Grid>
+                          );
+                        }
+
+                        // If latest price is undefined, show spinner
+                        if (displayPrice === undefined) {
+                          return (
+                            <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                              <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: 2, p: 2, minHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff', position: 'relative' }}>
+                                <CircularProgress />
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Fetching latest price...</Typography>
+                              </Card>
+                            </Grid>
+                          );
+                        }
+
                         const firstDetectedDate = stat.firstDate;
                         const firstDetectedPrice = stat.firstPrice;
                         const ohlcvFromFirst = ohlcv.filter(d => new Date(d.date) >= new Date(firstDetectedDate));
@@ -753,16 +874,38 @@ export default function CSEInsightsPage() {
                     <Grid container spacing={2}>
                       {filteredStocks.map((stock: any) => {
                         const stat = symbolStats[stock.symbol] || {};
-                        const displayPrice = latestPrices[stock.symbol] !== undefined ? latestPrices[stock.symbol] : stock.closing_price;
-                        const gainTilDate = stat.firstPrice && displayPrice !== null
+                        const displayPrice = latestPrices[stock.symbol];
+                        const gainTilDate = stat.firstPrice && typeof displayPrice === 'number'
                           ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
                           : '-';
                         const count = stat.count || 1;
-                        let badgeColor = '#a7f3d0'; // light green
+                        let badgeColor = '#a7f3d0';
                         if (count === 2) badgeColor = '#34d399';
                         else if (count === 3) badgeColor = '#059669';
                         else if (count >= 4) badgeColor = '#065f46';
-                        const ohlcv = ohlcvDataBySymbol[stock.symbol] || [];
+                        const ohlcv = ohlcvCache[stock.symbol] || [];
+                        const isLoading = pendingOhlcvRequests.has(stock.symbol);
+
+                        if (isLoading) {
+                          return (
+                            <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                              <LoadingCard />
+                            </Grid>
+                          );
+                        }
+
+                        // If latest price is undefined, show spinner
+                        if (displayPrice === undefined) {
+                          return (
+                            <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                              <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: 2, p: 2, minHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff', position: 'relative' }}>
+                                <CircularProgress />
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Fetching latest price...</Typography>
+                              </Card>
+                            </Grid>
+                          );
+                        }
+
                         const firstDetectedDate = stat.firstDate;
                         const firstDetectedPrice = stat.firstPrice;
                         const ohlcvFromFirst = ohlcv.filter(d => new Date(d.date) >= new Date(firstDetectedDate));
