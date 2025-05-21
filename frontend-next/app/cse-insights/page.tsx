@@ -192,17 +192,21 @@ export default function CSEInsightsPage() {
   const handleAccordionChange = (date: string) => (_: any, expanded: boolean) => {
     setExpandedDates((prev) => {
       if (expanded) {
+        // Fetch OHLCV for this date if not already fetched
         const allSymbols = new Set<string>();
         ['tier1Picks', 'tier2Picks'].forEach(tier => {
-          const picks = groupedPicks[date]?.[tier] || [];
-          picks.forEach((pick: any) => {
-            if (pick?.symbol && latestPrices[pick.symbol] === undefined) {
-              allSymbols.add(pick.symbol);
-            }
+          (groupedPicks[date]?.[tier] || []).forEach((pick: any) => {
+            if (pick?.symbol && !ohlcvDataBySymbol[pick.symbol]) allSymbols.add(pick.symbol);
           });
         });
-        if (allSymbols.size > 0) {
-          fetchLatestPricesForSymbols(allSymbols);
+        const symbolsArr = Array.from(allSymbols);
+        if (symbolsArr.length > 0) {
+          const symbolsParam = symbolsArr.join(',');
+          fetch(`/api/ohlcv-batch?symbols=${symbolsParam}`)
+            .then(res => res.json())
+            .then(data => {
+              setOhlcvDataBySymbol(prev => ({ ...prev, ...data }));
+            });
         }
         return [...prev, date];
       } else {
@@ -326,21 +330,22 @@ export default function CSEInsightsPage() {
   const selectedSectorSymbols = sectors.find(s => s.sector === selectedSectors[0])?.symbols || [];
 
   useEffect(() => {
-    const allSymbols = new Set<string>();
-    Object.values(groupedPicks || {}).forEach((day: any) => {
-      ['tier1Picks', 'tier2Picks'].forEach(tier => {
-        (day?.[tier] || []).forEach((pick: any) => {
-          if (pick?.symbol) allSymbols.add(pick.symbol);
-        });
+    const sortedDates = Object.keys(groupedPicks || {}).sort((a, b) => b.localeCompare(a));
+    if (sortedDates.length === 0) return;
+    const mostRecentDate = sortedDates[0];
+    const allSymbols = new Set();
+    ['tier1Picks', 'tier2Picks'].forEach(tier => {
+      (groupedPicks[mostRecentDate]?.[tier] || []).forEach((pick: any) => {
+        if (pick?.symbol) allSymbols.add(pick.symbol);
       });
     });
     const symbolsArr = Array.from(allSymbols);
     if (symbolsArr.length === 0) return;
     const symbolsParam = symbolsArr.join(',');
-    fetch(`/api/cse-insights/ohlcv-batch?symbols=${symbolsParam}`)
+    fetch(`/api/ohlcv-batch?symbols=${symbolsParam}`)
       .then(res => res.json())
       .then(data => {
-        setOhlcvDataBySymbol(data);
+        setOhlcvDataBySymbol(prev => ({ ...prev, ...data }));
       });
   }, [groupedPicks]);
 
