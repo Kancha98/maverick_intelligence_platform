@@ -334,23 +334,14 @@ export default function CSEInsightsPage() {
         });
       });
     });
-    // Fetch OHLCV for all symbols not already loaded
-    const symbolsToFetch = Array.from(allSymbols).filter(s => !ohlcvDataBySymbol[s]);
-    if (symbolsToFetch.length === 0) return;
-    Promise.all(symbolsToFetch.map(symbol =>
-      fetch(`/api/cse-insights/ohlcv?symbol=${symbol}`)
-        .then(res => res.json())
-        .then(data => {
-          const ohlcv = data.ohlcv || [];
-          return { symbol, ohlcv };
-        })
-    )).then(results => {
-      setOhlcvDataBySymbol(prev => {
-        const updated = { ...prev };
-        results.forEach(({ symbol, ohlcv }) => { updated[symbol] = ohlcv; });
-        return updated;
+    const symbolsArr = Array.from(allSymbols);
+    if (symbolsArr.length === 0) return;
+    const symbolsParam = symbolsArr.join(',');
+    fetch(`/api/cse-insights/ohlcv-batch?symbols=${symbolsParam}`)
+      .then(res => res.json())
+      .then(data => {
+        setOhlcvDataBySymbol(data);
       });
-    });
   }, [groupedPicks]);
 
   return (
