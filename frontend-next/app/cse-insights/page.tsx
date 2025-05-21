@@ -101,6 +101,7 @@ export default function CSEInsightsPage() {
   const [sectors, setSectors] = useState<{ sector: string; symbols: string[] }[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [appliedSectors, setAppliedSectors] = useState<string[]>([]);
+  const [ohlcvDataBySymbol, setOhlcvDataBySymbol] = useState<Record<string, any[]>>({});
 
   // Helper to get all codes for applied sectors (move this above useEffect)
   const sectorCodes = useMemo(() => {
@@ -324,6 +325,34 @@ export default function CSEInsightsPage() {
 
   const selectedSectorSymbols = sectors.find(s => s.sector === selectedSectors[0])?.symbols || [];
 
+  useEffect(() => {
+    const allSymbols = new Set<string>();
+    Object.values(groupedPicks || {}).forEach((day: any) => {
+      ['tier1Picks', 'tier2Picks'].forEach(tier => {
+        (day?.[tier] || []).forEach((pick: any) => {
+          if (pick?.symbol) allSymbols.add(pick.symbol);
+        });
+      });
+    });
+    // Fetch OHLCV for all symbols not already loaded
+    const symbolsToFetch = Array.from(allSymbols).filter(s => !ohlcvDataBySymbol[s]);
+    if (symbolsToFetch.length === 0) return;
+    Promise.all(symbolsToFetch.map(symbol =>
+      fetch(`/api/cse-insights/ohlcv?symbol=${symbol}`)
+        .then(res => res.json())
+        .then(data => {
+          const ohlcv = data.ohlcv || [];
+          return { symbol, ohlcv };
+        })
+    )).then(results => {
+      setOhlcvDataBySymbol(prev => {
+        const updated = { ...prev };
+        results.forEach(({ symbol, ohlcv }) => { updated[symbol] = ohlcv; });
+        return updated;
+      });
+    });
+  }, [groupedPicks]);
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} isDesktop={isDesktop} />
@@ -486,7 +515,7 @@ export default function CSEInsightsPage() {
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }} variant="scrollable" scrollButtons="auto">
           <Tab label="Picks" />
           <Tab label="Charts" />
-          <Tab label="Info" />
+          <Tab label="Performance" />
         </Tabs>
         {/* Tab Panels */}
         {tab === 0 && (
@@ -539,6 +568,21 @@ export default function CSEInsightsPage() {
                         if (count === 2) badgeColor = '#34d399';
                         else if (count === 3) badgeColor = '#059669';
                         else if (count >= 4) badgeColor = '#065f46';
+                        const ohlcv = ohlcvDataBySymbol[stock.symbol] || [];
+                        const firstDetectedDate = stat.firstDate;
+                        const firstDetectedPrice = stat.firstPrice;
+                        const ohlcvFromFirst = ohlcv.filter(d => new Date(d.date) >= new Date(firstDetectedDate));
+                        let peakGain = null, peakGainDate = null, daysTilPeak = null;
+                        if (ohlcvFromFirst.length > 0) {
+                          let max = ohlcvFromFirst[0];
+                          for (const d of ohlcvFromFirst) {
+                            if (d.close > max.close) max = d;
+                          }
+                          peakGain = ((max.close - firstDetectedPrice) / firstDetectedPrice) * 100;
+                          peakGainDate = max.date;
+                          daysTilPeak = Math.round((new Date(peakGainDate).getTime() - new Date(firstDetectedDate).getTime()) / (1000 * 60 * 60 * 24));
+                        }
+                        console.log('OHLCV for', stock.symbol, ohlcv);
                         return (
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
@@ -608,10 +652,22 @@ export default function CSEInsightsPage() {
                                     First Detected
                                   </span>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'left' }}>
+                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
                                   <span style={{ color: '#ef4444', fontWeight: 700 }}>
                                     {formatDate(stat.firstDate)}
                                   </span>
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
+                                  {gainTilDate}%
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Peak Gain Date</Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                  {peakGainDate ? formatDate(peakGainDate) : '-'}
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Days til Peak</Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                  {daysTilPeak !== null ? daysTilPeak : '-'}
                                 </Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
                                   PER
@@ -646,23 +702,30 @@ export default function CSEInsightsPage() {
                                     ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
-                                  {gainTilDate}%
-                                </Grid>
                               </Grid>
-                              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: 2 }}>
                                 <Tooltip title="Latest Close Price">
                                   <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
                                 </Tooltip>
-                                <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main' }}>
+                                <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: '2rem' }}>
                                   {typeof displayPrice === 'number' 
                                     ? displayPrice.toFixed(2) 
                                     : displayPrice === null
                                       ? 'N/A'
                                       : displayPrice}
                                 </Typography>
+                                <Tooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                  <InfoOutlined sx={{ fontSize: 20, color: 'success.main', ml: 2, mr: 1 }} />
+                                </Tooltip>
+                                <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: '2rem' }}>
+                                  {peakGain !== null ? peakGain.toFixed(2) + '%' : '-'}
+                                </Typography>
                               </Box>
+                              {ohlcv.length === 0 && (
+                                <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                                  No price history available for this symbol.
+                                </Typography>
+                              )}
                             </Card>
                           </Grid>
                         );
@@ -703,6 +766,21 @@ export default function CSEInsightsPage() {
                         if (count === 2) badgeColor = '#34d399';
                         else if (count === 3) badgeColor = '#059669';
                         else if (count >= 4) badgeColor = '#065f46';
+                        const ohlcv = ohlcvDataBySymbol[stock.symbol] || [];
+                        const firstDetectedDate = stat.firstDate;
+                        const firstDetectedPrice = stat.firstPrice;
+                        const ohlcvFromFirst = ohlcv.filter(d => new Date(d.date) >= new Date(firstDetectedDate));
+                        let peakGain = null, peakGainDate = null, daysTilPeak = null;
+                        if (ohlcvFromFirst.length > 0) {
+                          let max = ohlcvFromFirst[0];
+                          for (const d of ohlcvFromFirst) {
+                            if (d.close > max.close) max = d;
+                          }
+                          peakGain = ((max.close - firstDetectedPrice) / firstDetectedPrice) * 100;
+                          peakGainDate = max.date;
+                          daysTilPeak = Math.round((new Date(peakGainDate).getTime() - new Date(firstDetectedDate).getTime()) / (1000 * 60 * 60 * 24));
+                        }
+                        console.log('OHLCV for', stock.symbol, ohlcv);
                         return (
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
@@ -727,7 +805,7 @@ export default function CSEInsightsPage() {
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Tooltip title="Number of times this stock was detected in the selected period. If multiple detections happen, that means it's more likely to give better capital gains.">
+                                <Tooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
                                   <InfoOutlined sx={{ fontSize: 18, color: 'primary.main', mr: 0.5 }} />
                                 </Tooltip>
                                 <Box
@@ -777,6 +855,18 @@ export default function CSEInsightsPage() {
                                     {formatDate(stat.firstDate)}
                                   </span>
                                 </Grid>
+                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
+                                  {gainTilDate}%
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Peak Gain Date</Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                  {peakGainDate ? formatDate(peakGainDate) : '-'}
+                                </Grid>
+                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Days til Peak</Grid>
+                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                  {daysTilPeak !== null ? daysTilPeak : '-'}
+                                </Grid>
                                 <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
                                   PER
                                   <Tooltip title="Price to Earnings Ratio (Price/EPS)">
@@ -810,23 +900,30 @@ export default function CSEInsightsPage() {
                                     ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
-                                  {gainTilDate}%
-                                </Grid>
                               </Grid>
-                              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: 2 }}>
                                 <Tooltip title="Latest Close Price">
                                   <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
                                 </Tooltip>
-                                <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main' }}>
+                                <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: '2rem' }}>
                                   {typeof displayPrice === 'number' 
                                     ? displayPrice.toFixed(2) 
                                     : displayPrice === null
                                       ? 'N/A'
                                       : displayPrice}
                                 </Typography>
+                                <Tooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                  <InfoOutlined sx={{ fontSize: 20, color: 'success.main', ml: 2, mr: 1 }} />
+                                </Tooltip>
+                                <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: '2rem' }}>
+                                  {peakGain !== null ? peakGain.toFixed(2) + '%' : '-'}
+                                </Typography>
                               </Box>
+                              {ohlcv.length === 0 && (
+                                <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                                  No price history available for this symbol.
+                                </Typography>
+                              )}
                             </Card>
                           </Grid>
                         );
