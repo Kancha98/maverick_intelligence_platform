@@ -45,6 +45,7 @@ import Toolbar from '@mui/material/Toolbar';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { green } from '@mui/material/colors';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface StockData {
   symbol: string;
@@ -136,7 +137,7 @@ export default function CSEInsightsPage() {
     const sortedDates = Object.keys(groupedPicks || {}).sort((a, b) => b.localeCompare(a));
     return sortedDates.length > 0 ? [sortedDates[0]] : [];
   });
-  const [tier2View, setTier2View] = useState<'movers' | 'yet' | 'all'>('movers');
+  const [tier2View, setTier2View] = useState<'movers' | 'yet' | 'all'>('all');
   const [ohlcvData, setOhlcvData] = useState<any[]>([]);
   const [showCloseLine, setShowCloseLine] = useState(true);
   const [t2FilteredByDate, setT2FilteredByDate] = useState<Record<string, any[]>>({});
@@ -145,6 +146,50 @@ export default function CSEInsightsPage() {
   const [appliedSectors, setAppliedSectors] = useState<string[]>([]);
   const [ohlcvCache, setOhlcvCache] = useState<Record<string, any[]>>({});
   const [pendingOhlcvRequestsByDate, setPendingOhlcvRequestsByDate] = useState<Record<string, Set<string>>>({});
+
+  // Add refresh function
+  const refreshData = async () => {
+    // Clear all caches
+    setOhlcvCache({});
+    setLatestPrices({});
+    setPendingOhlcvRequestsByDate({});
+    
+    // Reset expanded dates
+    const sortedDates = Object.keys(groupedPicks || {}).sort((a, b) => b.localeCompare(a));
+    setExpandedDates(sortedDates.length > 0 ? [sortedDates[0]] : []);
+    
+    // Refetch main data
+    if (selectedDate) {
+      setLoading(true);
+      setError(null);
+      try {
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        // Updated fetch URL to use the new backend endpoint
+        const response = await fetch(`https://cse-maverick-be-platform.onrender.com/cse-predictor?date=${dateStr}`);
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const data = await response.json();
+        console.log('API Response:', data); // Debug log
+        setGroupedPicks(data.groupedPicks || {});
+        setChartData(data.chartData || []);
+        setLatestPrices(data.latestPrices || {});
+      } catch (err) {
+        setError('Failed to load stock data');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Refetch OHLCV data if symbol is selected
+    if (selectedSymbol) {
+      try {
+        const res = await fetch(`/api/cse-insights/ohlcv?symbol=${selectedSymbol}`);
+        const data = await res.json();
+        setOhlcvData(data.ohlcv || []);
+      } catch (e) {
+        setOhlcvData([]);
+      }
+    }
+  };
 
   // Helper to get all codes for applied sectors (move this above useEffect)
   const sectorCodes = useMemo(() => {
@@ -180,13 +225,16 @@ export default function CSEInsightsPage() {
       setError(null);
       try {
         const dateStr = selectedDate.toISOString().split('T')[0];
-        const response = await fetch(`/api/cse-insights?date=${dateStr}&symbol=${selectedSymbol}`);
+        // Updated fetch URL to use the new backend endpoint
+        const response = await fetch(`https://cse-maverick-be-platform.onrender.com/cse-predictor?date=${dateStr}`);
         if (!response.ok) throw new Error('Failed to fetch data');
         const data = await response.json();
+        console.log('API Response:', data); // Debug log
         setGroupedPicks(data.groupedPicks || {});
         setChartData(data.chartData || []);
         setLatestPrices(data.latestPrices || {});
       } catch (err) {
+        console.error('Fetch Error:', err); // Debug log
         setError('Failed to load stock data');
       } finally {
         setLoading(false);
@@ -297,14 +345,15 @@ export default function CSEInsightsPage() {
 
   // Preprocess symbol stats for the selected timeframe
   const symbolStats = useMemo(() => {
+    console.log('Calculating symbolStats with groupedPicks:', groupedPicks); // Debug log
     const stats: Record<string, {
       firstDate: string,
       firstPrice: number,
       count: number
     }> = {};
-    Object.values(groupedPicks || {}).forEach((day: any) => {
+    Object.entries(groupedPicks || {}).forEach(([date, dayData]: [string, any]) => {
       ['tier1Picks', 'tier2Picks'].forEach(tier => {
-        const picks = day?.[tier] || [];
+        const picks = dayData?.[tier] || [];
         picks.forEach((pick: any) => {
           if (!pick?.symbol) return;
           if (!stats[pick.symbol]) {
@@ -314,7 +363,6 @@ export default function CSEInsightsPage() {
               count: 1
             };
           } else {
-            // Use Date objects for robust comparison
             if (new Date(pick.date) < new Date(stats[pick.symbol].firstDate)) {
               stats[pick.symbol].firstDate = pick.date;
               stats[pick.symbol].firstPrice = pick.closing_price;
@@ -324,6 +372,7 @@ export default function CSEInsightsPage() {
         });
       });
     });
+    console.log('Calculated symbolStats:', stats); // Debug log
     return stats;
   }, [groupedPicks]);
 
@@ -331,12 +380,17 @@ export default function CSEInsightsPage() {
   useEffect(() => {
     const filtered: Record<string, any[]> = {};
     Object.keys(groupedPicks).forEach(date => {
+      console.log(`Processing date ${date}`); // Debug log
+      
       // Get tier 2 picks and sort by turnover by default
       let t2 = [...(groupedPicks[date]?.tier2Picks || [])].sort((a, b) => (b.turnover || 0) - (a.turnover || 0));
+      console.log('Original tier 2 picks:', t2.map(s => ({ symbol: s.symbol, turnover: s.turnover }))); // Debug log
 
       // Apply sector filtering
-      if (sectorCodes) {
+      if (sectorCodes && sectorCodes.size > 0) {
+        console.log('Applying sector filter with codes:', Array.from(sectorCodes)); // Debug log
         t2 = t2.filter((stock: any) => sectorCodes.has(stock.symbol));
+        console.log('After sector filtering:', t2.map(s => s.symbol)); // Debug log
       }
 
       // Filter based on view type
@@ -346,21 +400,20 @@ export default function CSEInsightsPage() {
           const stat = symbolStats[stock.symbol] || {};
           const ohlcv = ohlcvCache[stock.symbol] || [];
           const peakGain = getPeakGain(stock, stat, ohlcv);
-          return peakGain !== null && peakGain > 10; // Using 10% peak gain as threshold
+          console.log(`Stock ${stock.symbol} - Peak gain: ${peakGain}, Stats:`, stat); // Debug log
+          return peakGain !== null && peakGain > 10;
         });
       } else if (tier2View === 'yet') {
         filteredStocks = t2.filter((stock: any) => {
           const stat = symbolStats[stock.symbol] || {};
           const ohlcv = ohlcvCache[stock.symbol] || [];
           const peakGain = getPeakGain(stock, stat, ohlcv);
-          return peakGain === null || peakGain <= 10; // 10% or less peak gain
-        }).sort((a, b) => {
-          const countA = symbolStats[a.symbol]?.count || 1;
-          const countB = symbolStats[b.symbol]?.count || 1;
-          return countB - countA;
+          console.log(`Stock ${stock.symbol} - Peak gain: ${peakGain}, Stats:`, stat); // Debug log
+          return peakGain === null || peakGain <= 10;
         });
       }
-
+      
+      console.log(`Final filtered stocks for ${date}:`, filteredStocks.map(s => s.symbol)); // Debug log
       filtered[date] = filteredStocks;
     });
 
@@ -474,6 +527,11 @@ export default function CSEInsightsPage() {
             <Tooltip title="Show disclaimer">
               <IconButton onClick={() => setShowDisclaimer((v) => !v)}>
                 <InfoOutlined />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Refresh Data">
+              <IconButton onClick={refreshData} sx={{ mr: 1 }}>
+                <RefreshIcon />
               </IconButton>
             </Tooltip>
             <Button 
@@ -738,6 +796,12 @@ export default function CSEInsightsPage() {
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
                                   {stock.symbol}
+                                  {/* Bull icon if bullish divergence */}
+                                  {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                    <Tooltip title={stock.rsi_divergence} placement="top">
+                                      <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                    </Tooltip>
+                                  )}
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -973,6 +1037,12 @@ export default function CSEInsightsPage() {
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
                                   {stock.symbol}
+                                  {/* Bull icon if bullish divergence */}
+                                  {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                    <Tooltip title={stock.rsi_divergence} placement="top">
+                                      <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                    </Tooltip>
+                                  )}
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1183,6 +1253,12 @@ export default function CSEInsightsPage() {
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
                                   {stock.symbol}
+                                  {/* Bull icon if bullish divergence */}
+                                  {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                    <Tooltip title={stock.rsi_divergence} placement="top">
+                                      <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                    </Tooltip>
+                                  )}
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1393,6 +1469,12 @@ export default function CSEInsightsPage() {
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
                                   {stock.symbol}
+                                  {/* Bull icon if bullish divergence */}
+                                  {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                    <Tooltip title={stock.rsi_divergence} placement="top">
+                                      <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                    </Tooltip>
+                                  )}
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
