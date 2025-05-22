@@ -7,7 +7,8 @@ import {
   IconButton, Paper, Grid, FormGroup, Checkbox, Chip, 
   Table, TableBody, TableCell, TableContainer, TableHead, 
   TableRow, TextField, Tab, Tabs, useTheme, useMediaQuery,
-  FormControl, InputLabel, Select, MenuItem, Divider, ListItemText
+  FormControl, InputLabel, Select, MenuItem, Divider, ListItemText,
+  Dialog, DialogTitle, DialogContent, DialogActions, Tooltip as MuiTooltip
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -35,7 +36,7 @@ import {
   PointElement,
   LineElement,
   Title,
-  Tooltip,
+  Tooltip as ChartJsTooltip,
   Legend,
 } from 'chart.js';
 import Accordion from '@mui/material/Accordion';
@@ -43,6 +44,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import { ReactElement } from 'react';
 
 // Register Chart.js components
 ChartJS.register(
@@ -51,7 +53,7 @@ ChartJS.register(
   PointElement,
   LineElement,
   Title,
-  Tooltip,
+  ChartJsTooltip,
   Legend
 );
 
@@ -84,6 +86,35 @@ interface RecurringStock {
 // Update sectors state type
 type SectorType = { sector: string; codes: string[]; symbols?: string[] };
 
+// MobileTooltip component for mobile-friendly tooltips
+function MobileTooltip({ title, children }: { title: string; children: ReactElement }) {
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const [open, setOpen] = useState(false);
+
+  if (isMobile) {
+    return (
+      <>
+        <Box onClick={() => setOpen(true)} sx={{ display: 'inline-flex', cursor: 'pointer' }}>
+          {children}
+        </Box>
+        <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
+          <DialogContent>
+            <Typography variant="body1">{title}</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpen(false)} color="primary">Close</Button>
+          </DialogActions>
+        </Dialog>
+      </>
+    );
+  }
+  return (
+    <MuiTooltip title={title} placement="top">
+      {children}
+    </MuiTooltip>
+  );
+}
+
 export default function TechnicalAnalysisPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const theme = useTheme();
@@ -101,8 +132,11 @@ export default function TechnicalAnalysisPage() {
   const [tier3Data, setTier3Data] = useState<StockData[]>([]);
   
   // Date filter state
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const today = new Date();
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(today.getDate() - 14);
+  const [startDate, setStartDate] = useState<Date | null>(fourteenDaysAgo);
+  const [endDate, setEndDate] = useState<Date | null>(today);
   
   // Filter settings
   const [rsiRange, setRsiRange] = useState<[number, number]>([30, 70]);
@@ -650,13 +684,15 @@ export default function TechnicalAnalysisPage() {
                 multiple
                 value={selectedSectors}
                 onChange={handleSectorChange}
-                  renderValue={selected => selected.join(', ')}
-                  sx={{ minHeight: 44 }}
+                renderValue={selected =>
+                  selected.length === sectors.length ? 'All Sectors' : selected.join(', ')
+                }
+                sx={{ minHeight: 44 }}
                 MenuProps={{
                   PaperProps: {
                     style: {
-                        maxHeight: 240,
-                        width: '100%',
+                      maxHeight: 240,
+                      width: '100%',
                     },
                   },
                 }}
@@ -752,11 +788,11 @@ export default function TechnicalAnalysisPage() {
         }}>
           {/* Introduction */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h5" fontWeight={700} gutterBottom>
+            <Typography variant="h5" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
               🧭Technical Navigator
-            </Typography>
-            <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
-              An intelligent assistant to help you discover high-potential stocks by leveraging technical analysis tools!
+              <MobileTooltip title="An intelligent assistant to help you discover high-potential stocks by leveraging technical analysis tools!">
+                <InfoOutlined sx={{ ml: 1, fontSize: 20, color: 'primary.main', cursor: 'pointer' }} />
+              </MobileTooltip>
             </Typography>
             <Divider />
           </Box>
@@ -784,10 +820,11 @@ export default function TechnicalAnalysisPage() {
                   <Box>
                     <Typography variant="h6" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
                       <TrendingUpIcon color="primary" sx={{ mr: 1 }} /> Bullish Volumes!
+                      <MobileTooltip title="These are the counters identified to have interesting Volume Signatures.">
+                        <InfoOutlined sx={{ ml: 1, fontSize: 20, color: 'primary.main', cursor: 'pointer' }} />
+                      </MobileTooltip>
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      These are the counters identified to have interesting Volume Signatures.
-                    </Typography>
+                    
                     
                     {filteredTier1Data.length > 0 ? (
                       <TableContainer component={Paper} sx={{ borderRadius: 2, mb: 3, overflowX: 'auto' }}>
@@ -795,7 +832,7 @@ export default function TechnicalAnalysisPage() {
                           <TableHead>
                             <TableRow sx={{ bgcolor: '#f8fafc' }}>
                               <TableCell 
-                                sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                sx={{ position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper', minWidth: 90, fontWeight: 700, cursor: 'pointer' }}
                                 onClick={() => requestSort('date')}
                               >
                                 Date
@@ -804,7 +841,7 @@ export default function TechnicalAnalysisPage() {
                                 )}
                               </TableCell>
                               <TableCell 
-                                sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                sx={{ position: 'sticky', left: 90, zIndex: 2, bgcolor: 'background.paper', minWidth: 120, fontWeight: 700, cursor: 'pointer' }}
                                 onClick={() => requestSort('symbol')}
                               >
                                 Symbol
@@ -866,8 +903,12 @@ export default function TechnicalAnalysisPage() {
                                 hover
                                 sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                               >
-                                <TableCell>{new Date(stock.date).toLocaleDateString()}</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#2563eb' }}>{stock.symbol}</TableCell>
+                                <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
+                                  {new Date(stock.date).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
+                                  {stock.symbol}
+                                </TableCell>
                                 <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
                                 <TableCell 
                                   sx={{ 
@@ -928,9 +969,6 @@ export default function TechnicalAnalysisPage() {
                       ))}
                     </Box>
                     
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                      * All prices and turnover values are in Sri Lankan Rupees (LKR)
-                    </Typography>
                   </Box>
                 )}
               </Box>
@@ -941,6 +979,9 @@ export default function TechnicalAnalysisPage() {
                   <Box>
                     <Typography variant="h6" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
                       <PriceChangeIcon color="primary" sx={{ mr: 1 }} /> Potential Reversal Ahead!
+                      <MobileTooltip title="Stocks that are showing a potential reversal in price action due to divergence with RSI.">
+                        <InfoOutlined sx={{ ml: 1, fontSize: 20, color: 'primary.main', cursor: 'pointer' }} />
+                      </MobileTooltip>
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       Stocks that are showing a potential reversal in price action due to divergence with RSI.
@@ -952,7 +993,7 @@ export default function TechnicalAnalysisPage() {
                           <TableHead>
                             <TableRow sx={{ bgcolor: '#f8fafc' }}>
                               <TableCell 
-                                sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                sx={{ position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper', minWidth: 90, fontWeight: 700, cursor: 'pointer' }}
                                 onClick={() => requestSort('date')}
                               >
                                 Date
@@ -961,7 +1002,7 @@ export default function TechnicalAnalysisPage() {
                                 )}
                               </TableCell>
                               <TableCell 
-                                sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                sx={{ position: 'sticky', left: 90, zIndex: 2, bgcolor: 'background.paper', minWidth: 120, fontWeight: 700, cursor: 'pointer' }}
                                 onClick={() => requestSort('symbol')}
                               >
                                 Symbol
@@ -1032,8 +1073,12 @@ export default function TechnicalAnalysisPage() {
                                 hover
                                 sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                               >
-                                <TableCell>{new Date(stock.date).toLocaleDateString()}</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#2563eb' }}>{stock.symbol}</TableCell>
+                                <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
+                                  {new Date(stock.date).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
+                                  {stock.symbol}
+                                </TableCell>
                                 <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
                                 <TableCell 
                                   sx={{ 
@@ -1071,9 +1116,7 @@ export default function TechnicalAnalysisPage() {
                       </Alert>
                     )}
                     
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                      * All prices and turnover values are in Sri Lankan Rupees (LKR)
-                    </Typography>
+
                   </Box>
                 )}
               </Box>
@@ -1084,6 +1127,9 @@ export default function TechnicalAnalysisPage() {
                   <Box>
                     <Typography variant="h6" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
                       <ShowChartIcon color="primary" sx={{ mr: 1 }} /> Top Performers!
+                      <MobileTooltip title="These are rather liquid Stocks that has registered a Bullish Volume as well as price action stronger than the ASI.">
+                        <InfoOutlined sx={{ ml: 1, fontSize: 20, color: 'primary.main', cursor: 'pointer' }} />
+                      </MobileTooltip>
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       These are rather liquid Stocks that has registered a Bullish Volume as well as price action stronger than the ASI.
@@ -1095,7 +1141,7 @@ export default function TechnicalAnalysisPage() {
                           <TableHead>
                             <TableRow sx={{ bgcolor: '#f8fafc' }}>
                               <TableCell 
-                                sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                sx={{ position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper', minWidth: 90, fontWeight: 700, cursor: 'pointer' }}
                                 onClick={() => requestSort('date')}
                               >
                                 Date
@@ -1104,7 +1150,7 @@ export default function TechnicalAnalysisPage() {
                                 )}
                               </TableCell>
                               <TableCell 
-                                sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                sx={{ position: 'sticky', left: 90, zIndex: 2, bgcolor: 'background.paper', minWidth: 120, fontWeight: 700, cursor: 'pointer' }}
                                 onClick={() => requestSort('symbol')}
                               >
                                 Symbol
@@ -1175,8 +1221,12 @@ export default function TechnicalAnalysisPage() {
                                 hover
                                 sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                               >
-                                <TableCell>{new Date(stock.date).toLocaleDateString()}</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#2563eb' }}>{stock.symbol}</TableCell>
+                                <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
+                                  {new Date(stock.date).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
+                                  {stock.symbol}
+                                </TableCell>
                                 <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
                                 <TableCell 
                                   sx={{ 
@@ -1260,9 +1310,7 @@ export default function TechnicalAnalysisPage() {
                       </Box>
                     )}
                     
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 4, mb: 2 }}>
-                      * All prices and turnover values are in Sri Lankan Rupees (LKR)
-                    </Typography>
+
                   </Box>
                 )}
               </Box>
@@ -1273,9 +1321,9 @@ export default function TechnicalAnalysisPage() {
                   <Box>
                     <Typography variant="h6" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
                       <SearchIcon color="primary" sx={{ mr: 1 }} /> DIY & Take Control of Your Analysis
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Use the filters below to invoke your selection criteria. You can filter stocks based on RSI, Divergence, Volume Analysis, and more.
+                      <MobileTooltip title="Use the filters below to invoke your selection criteria. You can filter stocks based on RSI, Divergence, Volume Analysis, and more.">
+                        <InfoOutlined sx={{ ml: 1, fontSize: 20, color: 'primary.main', cursor: 'pointer' }} />
+                      </MobileTooltip>
                     </Typography>
                     
                     <Alert severity="info" sx={{ mb: 3 }}>
@@ -1506,7 +1554,7 @@ export default function TechnicalAnalysisPage() {
                             <TableHead>
                               <TableRow sx={{ bgcolor: '#f8fafc' }}>
                                 <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  sx={{ position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper', minWidth: 90, fontWeight: 700, cursor: 'pointer' }}
                                   onClick={() => requestSort('date')}
                                 >
                                   Date
@@ -1515,7 +1563,7 @@ export default function TechnicalAnalysisPage() {
                                   )}
                                 </TableCell>
                                 <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  sx={{ position: 'sticky', left: 90, zIndex: 2, bgcolor: 'background.paper', minWidth: 120, fontWeight: 700, cursor: 'pointer' }}
                                   onClick={() => requestSort('symbol')}
                                 >
                                   Symbol
@@ -1542,7 +1590,7 @@ export default function TechnicalAnalysisPage() {
                                   )}
                                 </TableCell>
                                 <TableCell 
-                                  sx={{ display: { xs: 'none', sm: 'table-cell' }, fontWeight: 700, cursor: 'pointer' }}
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
                                   onClick={() => requestSort('rsi')}
                                 >
                                   RSI
@@ -1551,7 +1599,7 @@ export default function TechnicalAnalysisPage() {
                                   )}
                                 </TableCell>
                                 <TableCell 
-                                  sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 700, cursor: 'pointer' }}
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
                                   onClick={() => requestSort('turnover')}
                                 >
                                   Turnover
@@ -1560,7 +1608,7 @@ export default function TechnicalAnalysisPage() {
                                   )}
                                 </TableCell>
                                 <TableCell 
-                                  sx={{ display: { xs: 'none', lg: 'table-cell' }, fontWeight: 700, cursor: 'pointer' }}
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
                                   onClick={() => requestSort('volume_analysis')}
                                 >
                                   Volume Analysis
@@ -1586,8 +1634,12 @@ export default function TechnicalAnalysisPage() {
                                   hover
                                   sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                 >
-                                  <TableCell>{new Date(stock.date).toLocaleDateString()}</TableCell>
-                                  <TableCell sx={{ fontWeight: 600, color: '#2563eb' }}>{stock.symbol}</TableCell>
+                                  <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
+                                    {new Date(stock.date).toLocaleDateString()}
+                                  </TableCell>
+                                  <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
+                                    {stock.symbol}
+                                  </TableCell>
                                   <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
                                   <TableCell 
                                     sx={{ 
@@ -1597,13 +1649,9 @@ export default function TechnicalAnalysisPage() {
                                   >
                                     {stock.change_pct >= 0 ? '+' : ''}{stock.change_pct.toFixed(2)}%
                                   </TableCell>
-                                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
-                                    {stock.rsi.toFixed(1)}
-                                  </TableCell>
-                                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                                    {stock.turnover > 0 ? `LKR ${stock.turnover.toLocaleString()}` : 'N/A'}
-                                  </TableCell>
-                                  <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                                  <TableCell>{stock.rsi.toFixed(1)}</TableCell>
+                                  <TableCell>{stock.turnover > 0 ? `LKR ${stock.turnover.toLocaleString()}` : 'N/A'}</TableCell>
+                                  <TableCell>
                                     <Chip 
                                       label={stock.volume_analysis} 
                                       size="small"
@@ -1611,10 +1659,7 @@ export default function TechnicalAnalysisPage() {
                                         stock.volume_analysis === 'High Bullish Momentum' ? 'success' :
                                         stock.volume_analysis === 'Emerging Bullish Momentum' ? 'primary' : 'default'
                                       }
-                                      sx={{ 
-                                        fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                                        height: { xs: 24, sm: 'auto' }
-                                      }}
+                                      sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
                                     />
                                   </TableCell>
                                   <TableCell 
@@ -1632,8 +1677,12 @@ export default function TechnicalAnalysisPage() {
                                   hover
                                   sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                 >
-                                  <TableCell>{new Date(stock.date).toLocaleDateString()}</TableCell>
-                                  <TableCell sx={{ fontWeight: 600, color: '#2563eb' }}>{stock.symbol}</TableCell>
+                                  <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
+                                    {new Date(stock.date).toLocaleDateString()}
+                                  </TableCell>
+                                  <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
+                                    {stock.symbol}
+                                  </TableCell>
                                   <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
                                   <TableCell 
                                     sx={{ 
@@ -1643,13 +1692,9 @@ export default function TechnicalAnalysisPage() {
                                   >
                                     {stock.change_pct >= 0 ? '+' : ''}{stock.change_pct.toFixed(2)}%
                                   </TableCell>
-                                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
-                                    {stock.rsi.toFixed(1)}
-                                  </TableCell>
-                                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                                    {stock.turnover > 0 ? `LKR ${stock.turnover.toLocaleString()}` : 'N/A'}
-                                  </TableCell>
-                                  <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                                  <TableCell>{stock.rsi.toFixed(1)}</TableCell>
+                                  <TableCell>{stock.turnover > 0 ? `LKR ${stock.turnover.toLocaleString()}` : 'N/A'}</TableCell>
+                                  <TableCell>
                                     <Chip 
                                       label={stock.volume_analysis} 
                                       size="small"
@@ -1657,10 +1702,7 @@ export default function TechnicalAnalysisPage() {
                                         stock.volume_analysis === 'High Bullish Momentum' ? 'success' :
                                         stock.volume_analysis === 'Emerging Bullish Momentum' ? 'primary' : 'default'
                                       }
-                                      sx={{ 
-                                        fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                                        height: { xs: 24, sm: 'auto' }
-                                      }}
+                                      sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
                                     />
                                   </TableCell>
                                   <TableCell 
@@ -1679,9 +1721,7 @@ export default function TechnicalAnalysisPage() {
                       </Grid>
                     </Grid>
                     
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 4, mb: 2 }}>
-                      * All prices and turnover values are in Sri Lankan Rupees (LKR)
-                    </Typography>
+
                   </Box>
                 )}
               </Box>
