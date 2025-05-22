@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect, ReactElement } from 'react';
 import {
   Box,
   Typography,
@@ -30,6 +30,10 @@ import {
   TableCell,
   TableRow,
   Skeleton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -46,6 +50,27 @@ import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { green } from '@mui/material/colors';
 import RefreshIcon from '@mui/icons-material/Refresh';
+
+// Style definitions
+const CardStyles = {
+  borderRadius: 3,
+  boxShadow: 2,
+  p: 2,
+  minHeight: 220,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  bgcolor: '#fff',
+  position: 'relative',
+  transition: 'box-shadow 0.2s',
+};
+
+const InfoIconStyles = {
+  fontSize: { xs: 20, sm: 18 },
+  color: 'primary.main',
+  ml: 0.5,
+  cursor: 'pointer',
+};
 
 interface StockData {
   symbol: string;
@@ -112,6 +137,49 @@ function LoadingCard() {
         <Skeleton width={100} height={40} />
       </Box>
     </Card>
+  );
+}
+
+// MobileTooltip component with proper typing
+function MobileTooltip({ title, children }: { title: string; children: ReactElement }) {
+  const [open, setOpen] = useState(false);
+  const isMobile = useMediaQuery('(max-width:600px)');
+
+  if (isMobile) {
+    return (
+      <>
+        <Box onClick={() => setOpen(true)} sx={{ cursor: 'pointer' }}>
+          {children}
+        </Box>
+        <Dialog 
+          open={open} 
+          onClose={() => setOpen(false)}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 2,
+              p: 1
+            }
+          }}
+        >
+          <DialogContent>
+            <Typography variant="body1">{title}</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpen(false)} color="primary">
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </>
+    );
+  }
+
+  return (
+    <Tooltip title={title} placement="top">
+      {children}
+    </Tooltip>
   );
 }
 
@@ -705,9 +773,9 @@ export default function CSEInsightsPage() {
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                       <Typography variant="h6">{date}</Typography>
-                      <Tooltip title="Click to view the picks of the day and the Gain til Date">
+                      <MobileTooltip title="Click to view the picks of the day and the Gain til Date">
                         <InfoOutlined sx={{ ml: 1, fontSize: 18, color: 'primary.main' }} />
-                      </Tooltip>
+                      </MobileTooltip>
                       {(pendingOhlcvRequestsByDate[date] && pendingOhlcvRequestsByDate[date].size > 0) && (
                         <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
                           <CircularProgress size={20} sx={{ mr: 1 }} />
@@ -719,13 +787,12 @@ export default function CSEInsightsPage() {
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
+                    {t1.length > 0 ? (
+                      <>
                     {/* Tier 1 Picks */}
                     <Typography variant="subtitle1" sx={{ mt: 1, mb: 1, display: 'flex', alignItems: 'center' }}>
                       <span role="img" aria-label="star">🌟</span> Tier 1 Picks
                     </Typography>
-                    {t1.length === 0 && (
-                      <Typography color="text.secondary" sx={{ mb: 2 }}>No Tier 1 picks for this date.</Typography>
-                    )}
                     <Grid container spacing={2}>
                       {t1.map((stock: any) => {
                         const stat = symbolStats[stock.symbol] || {};
@@ -779,35 +846,22 @@ export default function CSEInsightsPage() {
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
                               variant="outlined"
-                              sx={{
-                                borderRadius: 3,
-                                boxShadow: 2,
-                                p: 2,
-                                minHeight: 220,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                bgcolor: '#fff',
-                                position: 'relative',
-                                transition: 'box-shadow 0.2s',
-                                '&:hover': { boxShadow: 6, borderColor: 'primary.main' },
-                              }}
+                                  sx={CardStyles}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
                                   {stock.symbol}
-                                  {/* Bull icon if bullish divergence */}
                                   {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                    <Tooltip title={stock.rsi_divergence} placement="top">
+                                        <MobileTooltip title={stock.rsi_divergence}>
                                       <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                    </Tooltip>
+                                        </MobileTooltip>
                                   )}
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Tooltip title="Number of times this stock was detected in the selected period. If multiple detections happen, that means it's more likely to give better capital gains.">
-                                  <InfoOutlined sx={{ fontSize: 18, color: 'primary.main', mr: 0.5 }} />
-                                </Tooltip>
+                                    <MobileTooltip title="Number of times this stock was detected in the selected period. If multiple detections happen, that means it's more likely to give better capital gains.">
+                                      <InfoOutlined sx={InfoIconStyles} />
+                                    </MobileTooltip>
                                 <Box
                                   sx={{
                                     bgcolor: badgeColor,
@@ -816,7 +870,7 @@ export default function CSEInsightsPage() {
                                     py: 0.2,
                                     borderRadius: 2,
                                     fontWeight: 700,
-                                    fontSize: 15,
+                                        fontSize: { xs: 14, sm: 15 },
                                     minWidth: 32,
                                     textAlign: 'center',
                                     boxShadow: 1,
@@ -829,95 +883,97 @@ export default function CSEInsightsPage() {
                                 </Box>
                               </Box>
                               <Grid container spacing={0.5} sx={{ mb: 1 }}>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Turnover</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{Number(stock.turnover).toLocaleString()}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Turnover</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{Number(stock.turnover).toLocaleString()}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   Volume Signature
-                                  <Tooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   Relative Strength
-                                  <Tooltip title="More than 1 means in the near short term it has performed better than ASI.">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="More than 1 means in the near short term it has performed better than ASI.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{stock.relative_strength}</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{stock.relative_strength}</Grid>
                                 <Grid item xs={7}>
                                   <span style={{ color: '#ef4444', fontWeight: 500 }}>
                                     First Detected
                                   </span>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   <span style={{ color: '#ef4444', fontWeight: 700 }}>
                                     {formatDate(stat.firstDate)}
                                   </span>
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Gain til date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {gainTilDate !== '0.00' ? `${gainTilDate}%` : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Peak Gain Date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Peak Gain Date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {peakGainDate && peakGainDate !== stat.firstDate && daysTilPeak !== null && daysTilPeak > 0 ? formatDate(peakGainDate) : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Days til Peak</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Days til Peak</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {daysTilPeak !== null && daysTilPeak > 0 ? daysTilPeak : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                                  PER
-                                  <Tooltip title="Price to Earnings Ratio (Price/EPS)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PER
+                                      <MobileTooltip title="Price to Earnings Ratio (Price/EPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.eps_ttm && displayPrice 
                                     ? (displayPrice / stock.eps_ttm).toFixed(2) 
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                                  PBV
-                                  <Tooltip title="Price to Book Value (Price/BVPS)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PBV
+                                      <MobileTooltip title="Price to Book Value (Price/BVPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.bvps && displayPrice 
                                     ? (displayPrice / stock.bvps).toFixed(2) 
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   DY(%)
-                                  <Tooltip title="Dividend Yield (Dividend/Price × 100)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="Dividend Yield (Dividend/Price × 100)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.dps && displayPrice && displayPrice > 0
                                     ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
                                     : '-'}
                                 </Grid>
                               </Grid>
-                              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: 2 }}>
-                                <Tooltip title="Latest Close Price">
-                                  <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
-                                </Tooltip>
-                                <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: '2rem' }}>
-                                  {typeof displayPrice === 'number' 
-                                    ? displayPrice.toFixed(2) 
-                                    : displayPrice === null
-                                      ? 'N/A'
-                                      : displayPrice}
-                                </Typography>
+                                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: { xs: 1, sm: 2 } }}>
+                                    <MobileTooltip title="Latest Close Price">
+                                      <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'primary.main', mr: 1 }} />
+                                    </MobileTooltip>
+                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+  {displayPrice === undefined ? (
+    <CircularProgress size={18} sx={{ verticalAlign: 'middle' }} />
+  ) : displayPrice === null ? (
+    'N/A'
+  ) : (
+    displayPrice.toFixed(2)
+  )}
+</Typography>
                                 {peakGain !== null && peakGain !== 0 && (
                                   <>
-                                    <Tooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
-                                      <InfoOutlined sx={{ fontSize: 20, color: 'success.main', ml: 2, mr: 1 }} />
-                                    </Tooltip>
-                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: '2rem' }}>
+                                        <MobileTooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                          <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'success.main', ml: 2, mr: 1 }} />
+                                        </MobileTooltip>
+                                        <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                                       {peakGain.toFixed(2)}%
                                     </Typography>
                                   </>
@@ -1020,35 +1076,227 @@ export default function CSEInsightsPage() {
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
                               variant="outlined"
+                                  sx={CardStyles}
+                                >
+                                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                      {stock.symbol}
+                                      {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                        <MobileTooltip title={stock.rsi_divergence}>
+                                          <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                        </MobileTooltip>
+                                      )}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
+                                      <InfoOutlined sx={InfoIconStyles} />
+                                    </MobileTooltip>
+                                    <Box
                               sx={{
-                                borderRadius: 3,
-                                boxShadow: 2,
-                                p: 2,
-                                minHeight: 220,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                bgcolor: '#fff',
-                                position: 'relative',
-                                transition: 'box-shadow 0.2s',
-                                '&:hover': { boxShadow: 6, borderColor: 'primary.main' },
-                              }}
+                                        bgcolor: badgeColor,
+                                        color: '#fff',
+                                        px: 1.2,
+                                        py: 0.2,
+                                        borderRadius: 2,
+                                        fontWeight: 700,
+                                        fontSize: { xs: 14, sm: 15 },
+                                        minWidth: 32,
+                                        textAlign: 'center',
+                                        boxShadow: 1,
+                                        border: '2px solid #fff',
+                                        letterSpacing: 0.5,
+                                        transition: 'background 0.2s',
+                                      }}
+                                    >
+                                      {count}x
+                                    </Box>
+                                  </Box>
+                                  <Grid container spacing={0.5} sx={{ mb: 1 }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Turnover</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{Number(stock.turnover).toLocaleString()}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      Volume Signature
+                                      <MobileTooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      Relative Strength
+                                      <MobileTooltip title="More than 1 means in the near short term it has performed better than ASI.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{stock.relative_strength}</Grid>
+                                    <Grid item xs={7}>
+                                      <span style={{ color: '#ef4444', fontWeight: 500 }}>
+                                        First Detected
+                                      </span>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                                        {formatDate(stat.firstDate)}
+                                      </span>
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Gain til date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {gainTilDate !== '0.00' ? `${gainTilDate}%` : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Peak Gain Date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {peakGainDate && peakGainDate !== stat.firstDate && daysTilPeak !== null && daysTilPeak > 0 ? formatDate(peakGainDate) : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Days til Peak</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {daysTilPeak !== null && daysTilPeak > 0 ? daysTilPeak : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PER
+                                      <MobileTooltip title="Price to Earnings Ratio (Price/EPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.eps_ttm && displayPrice 
+                                        ? (displayPrice / stock.eps_ttm).toFixed(2) 
+                                        : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PBV
+                                      <MobileTooltip title="Price to Book Value (Price/BVPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.bvps && displayPrice 
+                                        ? (displayPrice / stock.bvps).toFixed(2) 
+                                        : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      DY(%)
+                                      <MobileTooltip title="Dividend Yield (Dividend/Price × 100)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.dps && displayPrice && displayPrice > 0
+                                        ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
+                                        : '-'}
+                                    </Grid>
+                                  </Grid>
+                                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: { xs: 1, sm: 2 } }}>
+                                    <MobileTooltip title="Latest Close Price">
+                                      <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'primary.main', mr: 1 }} />
+                                    </MobileTooltip>
+                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+  {displayPrice === undefined ? (
+    <CircularProgress size={18} sx={{ verticalAlign: 'middle' }} />
+  ) : displayPrice === null ? (
+    'N/A'
+  ) : (
+    displayPrice.toFixed(2)
+  )}
+</Typography>
+                                    {peakGain !== null && peakGain !== 0 && (
+                                      <>
+                                        <MobileTooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                          <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'success.main', ml: 2, mr: 1 }} />
+                                        </MobileTooltip>
+                                        <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                                          {peakGain.toFixed(2)}%
+                                        </Typography>
+                                      </>
+                                    )}
+                                  </Box>
+                                  {ohlcv.length === 0 && (
+                                    <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                                      No price history available for this symbol.
+                                    </Typography>
+                                  )}
+                                </Card>
+                              </Grid>
+                            );
+                          })}
+                          {tier2View === 'yet' && t2Filtered.slice().sort((a, b) => {
+                            const statA = symbolStats[a.symbol] || {};
+                            const statB = symbolStats[b.symbol] || {};
+                            const countA = statA.count || 1;
+                            const countB = statB.count || 1;
+                            if (countB !== countA) return countB - countA;
+                            const ohlcvA = ohlcvCache[a.symbol] || [];
+                            const ohlcvB = ohlcvCache[b.symbol] || [];
+                            const peakA = getPeakGain(a, statA, ohlcvA) ?? Infinity;
+                            const peakB = getPeakGain(b, statB, ohlcvB) ?? Infinity;
+                            return peakA - peakB;
+                          }).map((stock: any) => {
+                            const stat = symbolStats[stock.symbol] || {};
+                            const displayPrice = latestPrices[stock.symbol];
+                            const gainTilDate = stat.firstPrice && typeof displayPrice === 'number'
+                              ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
+                              : '-';
+                            const count = stat.count || 1;
+                            let badgeColor = '#a7f3d0';
+                            if (count === 2) badgeColor = '#34d399';
+                            else if (count === 3) badgeColor = '#059669';
+                            else if (count >= 4) badgeColor = '#065f46';
+                            const ohlcv = ohlcvCache[stock.symbol] || [];
+                            const isLoading = pendingOhlcvRequestsByDate[date]?.has(stock.symbol);
+
+                            if (isLoading) {
+                              return (
+                                <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                  <LoadingCard />
+                                </Grid>
+                              );
+                            }
+
+                            // If latest price is undefined, show spinner
+                            if (displayPrice === undefined) {
+                              return (
+                                <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                  <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: 2, p: 2, minHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff', position: 'relative' }}>
+                                    <CircularProgress />
+                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Fetching latest price...</Typography>
+                                  </Card>
+                                </Grid>
+                              );
+                            }
+
+                            const firstDetectedDate = stat.firstDate;
+                            const firstDetectedPrice = stat.firstPrice;
+                            const ohlcvFromFirst = ohlcv.filter(d => new Date(d.date) >= new Date(firstDetectedDate));
+                            let peakGain = null, peakGainDate = null, daysTilPeak = null;
+                            if (ohlcvFromFirst.length > 0) {
+                              let max = ohlcvFromFirst[0];
+                              for (const d of ohlcvFromFirst) {
+                                if (d.close > max.close) max = d;
+                              }
+                              peakGain = ((max.close - firstDetectedPrice) / firstDetectedPrice) * 100;
+                              peakGainDate = max.date;
+                              daysTilPeak = Math.round((new Date(peakGainDate).getTime() - new Date(firstDetectedDate).getTime()) / (1000 * 60 * 60 * 24));
+                            }
+                            console.log('OHLCV for', stock.symbol, ohlcv);
+                            return (
+                              <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                <Card
+                                  variant="outlined"
+                                  sx={CardStyles}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
                                   {stock.symbol}
-                                  {/* Bull icon if bullish divergence */}
                                   {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                    <Tooltip title={stock.rsi_divergence} placement="top">
+                                        <MobileTooltip title={stock.rsi_divergence}>
                                       <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                    </Tooltip>
+                                        </MobileTooltip>
                                   )}
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Tooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
-                                  <InfoOutlined sx={{ fontSize: 18, color: 'primary.main', mr: 0.5 }} />
-                                </Tooltip>
+                                    <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
+                                      <InfoOutlined sx={InfoIconStyles} />
+                                    </MobileTooltip>
                                 <Box
                                   sx={{
                                     bgcolor: badgeColor,
@@ -1057,7 +1305,7 @@ export default function CSEInsightsPage() {
                                     py: 0.2,
                                     borderRadius: 2,
                                     fontWeight: 700,
-                                    fontSize: 15,
+                                        fontSize: { xs: 14, sm: 15 },
                                     minWidth: 32,
                                     textAlign: 'center',
                                     boxShadow: 1,
@@ -1070,110 +1318,112 @@ export default function CSEInsightsPage() {
                                 </Box>
                               </Box>
                               <Grid container spacing={0.5} sx={{ mb: 1 }}>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Turnover</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{Number(stock.turnover).toLocaleString()}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Turnover</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{Number(stock.turnover).toLocaleString()}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   Volume Signature
-                                  <Tooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   Relative Strength
-                                  <Tooltip title="More than 1 means in the near short term it has performed better than ASI.">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="More than 1 means in the near short term it has performed better than ASI.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{stock.relative_strength}</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{stock.relative_strength}</Grid>
                                 <Grid item xs={7}>
                                   <span style={{ color: '#ef4444', fontWeight: 500 }}>
                                     First Detected
                                   </span>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   <span style={{ color: '#ef4444', fontWeight: 700 }}>
                                     {formatDate(stat.firstDate)}
                                   </span>
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Gain til date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {gainTilDate !== '0.00' ? `${gainTilDate}%` : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Peak Gain Date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Peak Gain Date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {peakGainDate && peakGainDate !== stat.firstDate && daysTilPeak !== null && daysTilPeak > 0 ? formatDate(peakGainDate) : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Days til Peak</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Days til Peak</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {daysTilPeak !== null && daysTilPeak > 0 ? daysTilPeak : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                                  PER
-                                  <Tooltip title="Price to Earnings Ratio (Price/EPS)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PER
+                                      <MobileTooltip title="Price to Earnings Ratio (Price/EPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.eps_ttm && displayPrice 
                                     ? (displayPrice / stock.eps_ttm).toFixed(2) 
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                                  PBV
-                                  <Tooltip title="Price to Book Value (Price/BVPS)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PBV
+                                      <MobileTooltip title="Price to Book Value (Price/BVPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.bvps && displayPrice 
                                     ? (displayPrice / stock.bvps).toFixed(2) 
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   DY(%)
-                                  <Tooltip title="Dividend Yield (Dividend/Price × 100)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="Dividend Yield (Dividend/Price × 100)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.dps && displayPrice && displayPrice > 0
                                     ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
                                     : '-'}
                                 </Grid>
                               </Grid>
-                              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: 2 }}>
-                                <Tooltip title="Latest Close Price">
-                                  <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
-                                </Tooltip>
-                                <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: '2rem' }}>
-                                  {typeof displayPrice === 'number' 
-                                    ? displayPrice.toFixed(2) 
-                                    : displayPrice === null
-                                      ? 'N/A'
-                                      : displayPrice}
-                                </Typography>
-                                {peakGain !== null && peakGain !== 0 && (
-                                  <>
-                                    <Tooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
-                                      <InfoOutlined sx={{ fontSize: 20, color: 'success.main', ml: 2, mr: 1 }} />
-                                    </Tooltip>
-                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: '2rem' }}>
-                                      {peakGain.toFixed(2)}%
+                                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: { xs: 1, sm: 2 } }}>
+                                    <MobileTooltip title="Latest Close Price">
+                                      <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'primary.main', mr: 1 }} />
+                                    </MobileTooltip>
+                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+  {displayPrice === undefined ? (
+    <CircularProgress size={18} sx={{ verticalAlign: 'middle' }} />
+  ) : displayPrice === null ? (
+    'N/A'
+  ) : (
+    displayPrice.toFixed(2)
+  )}
+</Typography>
+                                    {peakGain !== null && peakGain !== 0 && (
+                                      <>
+                                        <MobileTooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                          <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'success.main', ml: 2, mr: 1 }} />
+                                        </MobileTooltip>
+                                        <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                                          {peakGain.toFixed(2)}%
+                                        </Typography>
+                                      </>
+                                    )}
+                                  </Box>
+                                  {ohlcv.length === 0 && (
+                                    <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                                      No price history available for this symbol.
                                     </Typography>
-                                  </>
-                                )}
-                              </Box>
-                              {ohlcv.length === 0 && (
-                                <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
-                                  No price history available for this symbol.
-                                </Typography>
-                              )}
-                            </Card>
-                          </Grid>
-                        );
-                      })}
-                      {tier2View === 'yet' && t2Filtered.slice().sort((a, b) => {
+                                  )}
+                                </Card>
+                              </Grid>
+                            );
+                          })}
+                          {tier2View === 'all' && t2Filtered.slice().sort((a, b) => {
                         const statA = symbolStats[a.symbol] || {};
                         const statB = symbolStats[b.symbol] || {};
                         const countA = statA.count || 1;
@@ -1236,35 +1486,256 @@ export default function CSEInsightsPage() {
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
                               variant="outlined"
+                                  sx={CardStyles}
+                                >
+                                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                      {stock.symbol}
+                                      {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                        <MobileTooltip title={stock.rsi_divergence}>
+                                          <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                        </MobileTooltip>
+                                      )}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
+                                      <InfoOutlined sx={InfoIconStyles} />
+                                    </MobileTooltip>
+                                    <Box
                               sx={{
-                                borderRadius: 3,
-                                boxShadow: 2,
-                                p: 2,
-                                minHeight: 220,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                bgcolor: '#fff',
-                                position: 'relative',
-                                transition: 'box-shadow 0.2s',
-                                '&:hover': { boxShadow: 6, borderColor: 'primary.main' },
-                              }}
+                                        bgcolor: badgeColor,
+                                        color: '#fff',
+                                        px: 1.2,
+                                        py: 0.2,
+                                        borderRadius: 2,
+                                        fontWeight: 700,
+                                        fontSize: { xs: 14, sm: 15 },
+                                        minWidth: 32,
+                                        textAlign: 'center',
+                                        boxShadow: 1,
+                                        border: '2px solid #fff',
+                                        letterSpacing: 0.5,
+                                        transition: 'background 0.2s',
+                                      }}
+                                    >
+                                      {count}x
+                                    </Box>
+                                  </Box>
+                                  <Grid container spacing={0.5} sx={{ mb: 1 }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Turnover</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{Number(stock.turnover).toLocaleString()}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      Volume Signature
+                                      <MobileTooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      Relative Strength
+                                      <MobileTooltip title="More than 1 means in the near short term it has performed better than ASI.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{stock.relative_strength}</Grid>
+                                    <Grid item xs={7}>
+                                      <span style={{ color: '#ef4444', fontWeight: 500 }}>
+                                        First Detected
+                                      </span>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                                        {formatDate(stat.firstDate)}
+                                      </span>
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Gain til date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {gainTilDate !== '0.00' ? `${gainTilDate}%` : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Peak Gain Date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {peakGainDate && peakGainDate !== stat.firstDate && daysTilPeak !== null && daysTilPeak > 0 ? formatDate(peakGainDate) : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Days til Peak</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {daysTilPeak !== null && daysTilPeak > 0 ? daysTilPeak : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PER
+                                      <MobileTooltip title="Price to Earnings Ratio (Price/EPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.eps_ttm && displayPrice 
+                                        ? (displayPrice / stock.eps_ttm).toFixed(2) 
+                                        : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PBV
+                                      <MobileTooltip title="Price to Book Value (Price/BVPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.bvps && displayPrice 
+                                        ? (displayPrice / stock.bvps).toFixed(2) 
+                                        : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      DY(%)
+                                      <MobileTooltip title="Dividend Yield (Dividend/Price × 100)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.dps && displayPrice && displayPrice > 0
+                                        ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
+                                        : '-'}
+                                    </Grid>
+                                  </Grid>
+                                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: { xs: 1, sm: 2 } }}>
+                                    <MobileTooltip title="Latest Close Price">
+                                      <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'primary.main', mr: 1 }} />
+                                    </MobileTooltip>
+                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+  {displayPrice === undefined ? (
+    <CircularProgress size={18} sx={{ verticalAlign: 'middle' }} />
+  ) : displayPrice === null ? (
+    'N/A'
+  ) : (
+    displayPrice.toFixed(2)
+  )}
+</Typography>
+                                    {peakGain !== null && peakGain !== 0 && (
+                                      <>
+                                        <MobileTooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                          <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'success.main', ml: 2, mr: 1 }} />
+                                        </MobileTooltip>
+                                        <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                                          {peakGain.toFixed(2)}%
+                                        </Typography>
+                                      </>
+                                    )}
+                                  </Box>
+                                  {ohlcv.length === 0 && (
+                                    <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                                      No price history available for this symbol.
+                                    </Typography>
+                                  )}
+                                </Card>
+                              </Grid>
+                            );
+                          })}
+                        </Grid>
+                        {/* If both are empty */}
+                        {t1.length === 0 && filteredStocks.length === 0 && (
+                          <Typography color="text.secondary" sx={{ mt: 2 }}>No picks for this date.</Typography>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {/* Only Tier 2 Picks, no label */}
+                        <ToggleButtonGroup
+                          value={tier2View}
+                          exclusive
+                          onChange={(_, v) => v && setTier2View(v)}
+                          sx={{ width: '100%', mb: 2, display: 'flex', justifyContent: 'center' }}
+                        >
+                          <ToggleButton value="movers" sx={{ flex: 1, fontWeight: 700, fontSize: 15, p: 1.2 }}>
+                            Strong Movers
+                          </ToggleButton>
+                          <ToggleButton value="yet" sx={{ flex: 1, fontWeight: 700, fontSize: 15, p: 1.2 }}>
+                            Yet to Take Off
+                          </ToggleButton>
+                          <ToggleButton value="all" sx={{ flex: 1, fontWeight: 700, fontSize: 15, p: 1.2 }}>
+                            All
+                          </ToggleButton>
+                        </ToggleButtonGroup>
+                        {t2Filtered.length === 0 && (
+                          <Typography color="text.secondary" sx={{ mb: 2 }}>No picks for this date.</Typography>
+                        )}
+                        <Grid container spacing={2}>
+                          {tier2View === 'movers' && t2Filtered.slice().sort((a, b) => {
+                            const statA = symbolStats[a.symbol] || {};
+                            const statB = symbolStats[b.symbol] || {};
+                            const countA = statA.count || 1;
+                            const countB = statB.count || 1;
+                            if (countB !== countA) return countB - countA;
+                            const ohlcvA = ohlcvCache[a.symbol] || [];
+                            const ohlcvB = ohlcvCache[b.symbol] || [];
+                            const peakA = getPeakGain(a, statA, ohlcvA) ?? -Infinity;
+                            const peakB = getPeakGain(b, statB, ohlcvB) ?? -Infinity;
+                            return peakB - peakA;
+                          }).map((stock: any) => {
+                            const stat = symbolStats[stock.symbol] || {};
+                            const displayPrice = latestPrices[stock.symbol];
+                            const gainTilDate = stat.firstPrice && typeof displayPrice === 'number'
+                              ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
+                              : '-';
+                            const count = stat.count || 1;
+                            let badgeColor = '#a7f3d0';
+                            if (count === 2) badgeColor = '#34d399';
+                            else if (count === 3) badgeColor = '#059669';
+                            else if (count >= 4) badgeColor = '#065f46';
+                            const ohlcv = ohlcvCache[stock.symbol] || [];
+                            const isLoading = pendingOhlcvRequestsByDate[date]?.has(stock.symbol);
+
+                            if (isLoading) {
+                              return (
+                                <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                  <LoadingCard />
+                                </Grid>
+                              );
+                            }
+
+                            // If latest price is undefined, show spinner
+                            if (displayPrice === undefined) {
+                              return (
+                                <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                  <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: 2, p: 2, minHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff', position: 'relative' }}>
+                                    <CircularProgress />
+                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Fetching latest price...</Typography>
+                                  </Card>
+                                </Grid>
+                              );
+                            }
+
+                            const firstDetectedDate = stat.firstDate;
+                            const firstDetectedPrice = stat.firstPrice;
+                            const ohlcvFromFirst = ohlcv.filter(d => new Date(d.date) >= new Date(firstDetectedDate));
+                            let peakGain = null, peakGainDate = null, daysTilPeak = null;
+                            if (ohlcvFromFirst.length > 0) {
+                              let max = ohlcvFromFirst[0];
+                              for (const d of ohlcvFromFirst) {
+                                if (d.close > max.close) max = d;
+                              }
+                              peakGain = ((max.close - firstDetectedPrice) / firstDetectedPrice) * 100;
+                              peakGainDate = max.date;
+                              daysTilPeak = Math.round((new Date(peakGainDate).getTime() - new Date(firstDetectedDate).getTime()) / (1000 * 60 * 60 * 24));
+                            }
+                            console.log('OHLCV for', stock.symbol, ohlcv);
+                            return (
+                              <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                <Card
+                                  variant="outlined"
+                                  sx={CardStyles}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
                                   {stock.symbol}
-                                  {/* Bull icon if bullish divergence */}
                                   {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                    <Tooltip title={stock.rsi_divergence} placement="top">
+                                        <MobileTooltip title={stock.rsi_divergence}>
                                       <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                    </Tooltip>
+                                        </MobileTooltip>
                                   )}
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Tooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
-                                  <InfoOutlined sx={{ fontSize: 18, color: 'primary.main', mr: 0.5 }} />
-                                </Tooltip>
+                                    <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
+                                      <InfoOutlined sx={InfoIconStyles} />
+                                    </MobileTooltip>
                                 <Box
                                   sx={{
                                     bgcolor: badgeColor,
@@ -1273,7 +1744,7 @@ export default function CSEInsightsPage() {
                                     py: 0.2,
                                     borderRadius: 2,
                                     fontWeight: 700,
-                                    fontSize: 15,
+                                        fontSize: { xs: 14, sm: 15 },
                                     minWidth: 32,
                                     textAlign: 'center',
                                     boxShadow: 1,
@@ -1286,110 +1757,112 @@ export default function CSEInsightsPage() {
                                 </Box>
                               </Box>
                               <Grid container spacing={0.5} sx={{ mb: 1 }}>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Turnover</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{Number(stock.turnover).toLocaleString()}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Turnover</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{Number(stock.turnover).toLocaleString()}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   Volume Signature
-                                  <Tooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   Relative Strength
-                                  <Tooltip title="More than 1 means in the near short term it has performed better than ASI.">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="More than 1 means in the near short term it has performed better than ASI.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{stock.relative_strength}</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{stock.relative_strength}</Grid>
                                 <Grid item xs={7}>
                                   <span style={{ color: '#ef4444', fontWeight: 500 }}>
                                     First Detected
                                   </span>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   <span style={{ color: '#ef4444', fontWeight: 700 }}>
                                     {formatDate(stat.firstDate)}
                                   </span>
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Gain til date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {gainTilDate !== '0.00' ? `${gainTilDate}%` : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Peak Gain Date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Peak Gain Date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {peakGainDate && peakGainDate !== stat.firstDate && daysTilPeak !== null && daysTilPeak > 0 ? formatDate(peakGainDate) : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Days til Peak</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Days til Peak</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {daysTilPeak !== null && daysTilPeak > 0 ? daysTilPeak : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                                  PER
-                                  <Tooltip title="Price to Earnings Ratio (Price/EPS)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PER
+                                      <MobileTooltip title="Price to Earnings Ratio (Price/EPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.eps_ttm && displayPrice 
                                     ? (displayPrice / stock.eps_ttm).toFixed(2) 
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                                  PBV
-                                  <Tooltip title="Price to Book Value (Price/BVPS)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PBV
+                                      <MobileTooltip title="Price to Book Value (Price/BVPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.bvps && displayPrice 
                                     ? (displayPrice / stock.bvps).toFixed(2) 
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   DY(%)
-                                  <Tooltip title="Dividend Yield (Dividend/Price × 100)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="Dividend Yield (Dividend/Price × 100)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.dps && displayPrice && displayPrice > 0
                                     ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
                                     : '-'}
                                 </Grid>
                               </Grid>
-                              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: 2 }}>
-                                <Tooltip title="Latest Close Price">
-                                  <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
-                                </Tooltip>
-                                <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: '2rem' }}>
-                                  {typeof displayPrice === 'number' 
-                                    ? displayPrice.toFixed(2) 
-                                    : displayPrice === null
-                                      ? 'N/A'
-                                      : displayPrice}
-                                </Typography>
-                                {peakGain !== null && peakGain !== 0 && (
-                                  <>
-                                    <Tooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
-                                      <InfoOutlined sx={{ fontSize: 20, color: 'success.main', ml: 2, mr: 1 }} />
-                                    </Tooltip>
-                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: '2rem' }}>
-                                      {peakGain.toFixed(2)}%
+                                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: { xs: 1, sm: 2 } }}>
+                                    <MobileTooltip title="Latest Close Price">
+                                      <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'primary.main', mr: 1 }} />
+                                    </MobileTooltip>
+                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+  {displayPrice === undefined ? (
+    <CircularProgress size={18} sx={{ verticalAlign: 'middle' }} />
+  ) : displayPrice === null ? (
+    'N/A'
+  ) : (
+    displayPrice.toFixed(2)
+  )}
+</Typography>
+                                    {peakGain !== null && peakGain !== 0 && (
+                                      <>
+                                        <MobileTooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                          <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'success.main', ml: 2, mr: 1 }} />
+                                        </MobileTooltip>
+                                        <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                                          {peakGain.toFixed(2)}%
+                                        </Typography>
+                                      </>
+                                    )}
+                                  </Box>
+                                  {ohlcv.length === 0 && (
+                                    <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                                      No price history available for this symbol.
                                     </Typography>
-                                  </>
-                                )}
-                              </Box>
-                              {ohlcv.length === 0 && (
-                                <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
-                                  No price history available for this symbol.
-                                </Typography>
-                              )}
-                            </Card>
-                          </Grid>
-                        );
-                      })}
-                      {tier2View === 'all' && t2Filtered.slice().sort((a, b) => {
+                                  )}
+                                </Card>
+                              </Grid>
+                            );
+                          })}
+                          {tier2View === 'yet' && t2Filtered.slice().sort((a, b) => {
                         const statA = symbolStats[a.symbol] || {};
                         const statB = symbolStats[b.symbol] || {};
                         const countA = statA.count || 1;
@@ -1452,35 +1925,227 @@ export default function CSEInsightsPage() {
                           <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
                             <Card
                               variant="outlined"
+                                  sx={CardStyles}
+                                >
+                                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                      {stock.symbol}
+                                      {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                        <MobileTooltip title={stock.rsi_divergence}>
+                                          <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                        </MobileTooltip>
+                                      )}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
+                                      <InfoOutlined sx={InfoIconStyles} />
+                                    </MobileTooltip>
+                                    <Box
                               sx={{
-                                borderRadius: 3,
-                                boxShadow: 2,
-                                p: 2,
-                                minHeight: 220,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                bgcolor: '#fff',
-                                position: 'relative',
-                                transition: 'box-shadow 0.2s',
-                                '&:hover': { boxShadow: 6, borderColor: 'primary.main' },
-                              }}
+                                        bgcolor: badgeColor,
+                                        color: '#fff',
+                                        px: 1.2,
+                                        py: 0.2,
+                                        borderRadius: 2,
+                                        fontWeight: 700,
+                                        fontSize: { xs: 14, sm: 15 },
+                                        minWidth: 32,
+                                        textAlign: 'center',
+                                        boxShadow: 1,
+                                        border: '2px solid #fff',
+                                        letterSpacing: 0.5,
+                                        transition: 'background 0.2s',
+                                      }}
+                                    >
+                                      {count}x
+                                    </Box>
+                                  </Box>
+                                  <Grid container spacing={0.5} sx={{ mb: 1 }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Turnover</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{Number(stock.turnover).toLocaleString()}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      Volume Signature
+                                      <MobileTooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      Relative Strength
+                                      <MobileTooltip title="More than 1 means in the near short term it has performed better than ASI.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{stock.relative_strength}</Grid>
+                                    <Grid item xs={7}>
+                                      <span style={{ color: '#ef4444', fontWeight: 500 }}>
+                                        First Detected
+                                      </span>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                                        {formatDate(stat.firstDate)}
+                                      </span>
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Gain til date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {gainTilDate !== '0.00' ? `${gainTilDate}%` : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Peak Gain Date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {peakGainDate && peakGainDate !== stat.firstDate && daysTilPeak !== null && daysTilPeak > 0 ? formatDate(peakGainDate) : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Days til Peak</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {daysTilPeak !== null && daysTilPeak > 0 ? daysTilPeak : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PER
+                                      <MobileTooltip title="Price to Earnings Ratio (Price/EPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.eps_ttm && displayPrice 
+                                        ? (displayPrice / stock.eps_ttm).toFixed(2) 
+                                        : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PBV
+                                      <MobileTooltip title="Price to Book Value (Price/BVPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.bvps && displayPrice 
+                                        ? (displayPrice / stock.bvps).toFixed(2) 
+                                        : '-'}
+                                    </Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      DY(%)
+                                      <MobileTooltip title="Dividend Yield (Dividend/Price × 100)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
+                                    </Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      {stock.dps && displayPrice && displayPrice > 0
+                                        ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
+                                        : '-'}
+                                    </Grid>
+                                  </Grid>
+                                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: { xs: 1, sm: 2 } }}>
+                                    <MobileTooltip title="Latest Close Price">
+                                      <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'primary.main', mr: 1 }} />
+                                    </MobileTooltip>
+                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+  {displayPrice === undefined ? (
+    <CircularProgress size={18} sx={{ verticalAlign: 'middle' }} />
+  ) : displayPrice === null ? (
+    'N/A'
+  ) : (
+    displayPrice.toFixed(2)
+  )}
+</Typography>
+                                    {peakGain !== null && peakGain !== 0 && (
+                                      <>
+                                        <MobileTooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                          <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'success.main', ml: 2, mr: 1 }} />
+                                        </MobileTooltip>
+                                        <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                                          {peakGain.toFixed(2)}%
+                                        </Typography>
+                                      </>
+                                    )}
+                                  </Box>
+                                  {ohlcv.length === 0 && (
+                                    <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                                      No price history available for this symbol.
+                                    </Typography>
+                                  )}
+                                </Card>
+                              </Grid>
+                            );
+                          })}
+                          {tier2View === 'all' && t2Filtered.slice().sort((a, b) => {
+                            const statA = symbolStats[a.symbol] || {};
+                            const statB = symbolStats[b.symbol] || {};
+                            const countA = statA.count || 1;
+                            const countB = statB.count || 1;
+                            if (countB !== countA) return countB - countA;
+                            const ohlcvA = ohlcvCache[a.symbol] || [];
+                            const ohlcvB = ohlcvCache[b.symbol] || [];
+                            const peakA = getPeakGain(a, statA, ohlcvA) ?? Infinity;
+                            const peakB = getPeakGain(b, statB, ohlcvB) ?? Infinity;
+                            return peakA - peakB;
+                          }).map((stock: any) => {
+                            const stat = symbolStats[stock.symbol] || {};
+                            const displayPrice = latestPrices[stock.symbol];
+                            const gainTilDate = stat.firstPrice && typeof displayPrice === 'number'
+                              ? (((displayPrice - stat.firstPrice) / stat.firstPrice) * 100).toFixed(2)
+                              : '-';
+                            const count = stat.count || 1;
+                            let badgeColor = '#a7f3d0';
+                            if (count === 2) badgeColor = '#34d399';
+                            else if (count === 3) badgeColor = '#059669';
+                            else if (count >= 4) badgeColor = '#065f46';
+                            const ohlcv = ohlcvCache[stock.symbol] || [];
+                            const isLoading = pendingOhlcvRequestsByDate[date]?.has(stock.symbol);
+
+                            if (isLoading) {
+                              return (
+                                <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                  <LoadingCard />
+                                </Grid>
+                              );
+                            }
+
+                            // If latest price is undefined, show spinner
+                            if (displayPrice === undefined) {
+                              return (
+                                <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                  <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: 2, p: 2, minHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff', position: 'relative' }}>
+                                    <CircularProgress />
+                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Fetching latest price...</Typography>
+                                  </Card>
+                                </Grid>
+                              );
+                            }
+
+                            const firstDetectedDate = stat.firstDate;
+                            const firstDetectedPrice = stat.firstPrice;
+                            const ohlcvFromFirst = ohlcv.filter(d => new Date(d.date) >= new Date(firstDetectedDate));
+                            let peakGain = null, peakGainDate = null, daysTilPeak = null;
+                            if (ohlcvFromFirst.length > 0) {
+                              let max = ohlcvFromFirst[0];
+                              for (const d of ohlcvFromFirst) {
+                                if (d.close > max.close) max = d;
+                              }
+                              peakGain = ((max.close - firstDetectedPrice) / firstDetectedPrice) * 100;
+                              peakGainDate = max.date;
+                              daysTilPeak = Math.round((new Date(peakGainDate).getTime() - new Date(firstDetectedDate).getTime()) / (1000 * 60 * 60 * 24));
+                            }
+                            console.log('OHLCV for', stock.symbol, ohlcv);
+                            return (
+                              <Grid item xs={12} sm={6} md={4} key={stock.symbol + stock.date}>
+                                <Card
+                                  variant="outlined"
+                                  sx={CardStyles}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
                                   {stock.symbol}
-                                  {/* Bull icon if bullish divergence */}
                                   {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                    <Tooltip title={stock.rsi_divergence} placement="top">
+                                        <MobileTooltip title={stock.rsi_divergence}>
                                       <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                    </Tooltip>
+                                        </MobileTooltip>
                                   )}
                                 </Typography>
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Tooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
-                                  <InfoOutlined sx={{ fontSize: 18, color: 'primary.main', mr: 0.5 }} />
-                                </Tooltip>
+                                    <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
+                                      <InfoOutlined sx={InfoIconStyles} />
+                                    </MobileTooltip>
                                 <Box
                                   sx={{
                                     bgcolor: badgeColor,
@@ -1489,7 +2154,7 @@ export default function CSEInsightsPage() {
                                     py: 0.2,
                                     borderRadius: 2,
                                     fontWeight: 700,
-                                    fontSize: 15,
+                                        fontSize: { xs: 14, sm: 15 },
                                     minWidth: 32,
                                     textAlign: 'center',
                                     boxShadow: 1,
@@ -1502,113 +2167,113 @@ export default function CSEInsightsPage() {
                                 </Box>
                               </Box>
                               <Grid container spacing={0.5} sx={{ mb: 1 }}>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Turnover</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{Number(stock.turnover).toLocaleString()}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Turnover</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{Number(stock.turnover).toLocaleString()}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   Volume Signature
-                                  <Tooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="If High Bullish, very high volume has been trading. If Emerging Bullish, significant volume has been traded.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{(stock.volume_analysis || '').replace(/\s*Momentum$/, '')}</Grid>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   Relative Strength
-                                  <Tooltip title="More than 1 means in the near short term it has performed better than ASI.">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="More than 1 means in the near short term it has performed better than ASI.">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>{stock.relative_strength}</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>{stock.relative_strength}</Grid>
                                 <Grid item xs={7}>
                                   <span style={{ color: '#ef4444', fontWeight: 500 }}>
                                     First Detected
                                   </span>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   <span style={{ color: '#ef4444', fontWeight: 700 }}>
                                     {formatDate(stat.firstDate)}
                                   </span>
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary' }}>Gain til date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', fontSize: { xs: '0.875rem', sm: '1rem' } }}>Gain til date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: Number(gainTilDate) > 0 ? 'success.main' : Number(gainTilDate) < 0 ? 'error.main' : 'text.primary', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {gainTilDate !== '0.00' ? `${gainTilDate}%` : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Peak Gain Date</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Peak Gain Date</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {peakGainDate && peakGainDate !== stat.firstDate && daysTilPeak !== null && daysTilPeak > 0 ? formatDate(peakGainDate) : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500 }}>Days til Peak</Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700 }}>
+                                    <Grid item xs={7} sx={{ color: '#22c55e', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Days til Peak</Grid>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', color: '#22c55e', fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {daysTilPeak !== null && daysTilPeak > 0 ? daysTilPeak : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                                  PER
-                                  <Tooltip title="Price to Earnings Ratio (Price/EPS)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PER
+                                      <MobileTooltip title="Price to Earnings Ratio (Price/EPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.eps_ttm && displayPrice 
                                     ? (displayPrice / stock.eps_ttm).toFixed(2) 
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                                  PBV
-                                  <Tooltip title="Price to Book Value (Price/BVPS)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                                      PBV
+                                      <MobileTooltip title="Price to Book Value (Price/BVPS)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.bvps && displayPrice 
                                     ? (displayPrice / stock.bvps).toFixed(2) 
                                     : '-'}
                                 </Grid>
-                                <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                    <Grid item xs={7} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   DY(%)
-                                  <Tooltip title="Dividend Yield (Dividend/Price × 100)">
-                                    <InfoOutlined sx={{ fontSize: 16, color: 'primary.main', ml: 0.5 }} />
-                                  </Tooltip>
+                                      <MobileTooltip title="Dividend Yield (Dividend/Price × 100)">
+                                        <InfoOutlined sx={InfoIconStyles} />
+                                      </MobileTooltip>
                                 </Grid>
-                                <Grid item xs={5} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={5} sx={{ textAlign: 'right', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {stock.dps && displayPrice && displayPrice > 0
                                     ? ((stock.dps / displayPrice) * 100).toFixed(2) + '%'
                                     : '-'}
                                 </Grid>
                               </Grid>
-                              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: 2 }}>
-                                <Tooltip title="Latest Close Price">
-                                  <InfoOutlined sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
-                                </Tooltip>
-                                <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: '2rem' }}>
-                                  {typeof displayPrice === 'number' 
-                                    ? displayPrice.toFixed(2) 
-                                    : displayPrice === null
-                                      ? 'N/A'
-                                      : displayPrice}
-                                </Typography>
-                                {peakGain !== null && peakGain !== 0 && (
-                                  <>
-                                    <Tooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
-                                      <InfoOutlined sx={{ fontSize: 20, color: 'success.main', ml: 2, mr: 1 }} />
-                                    </Tooltip>
-                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: '2rem' }}>
-                                      {peakGain.toFixed(2)}%
+                                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', mt: 1, gap: { xs: 1, sm: 2 } }}>
+                                    <MobileTooltip title="Latest Close Price">
+                                      <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'primary.main', mr: 1 }} />
+                                    </MobileTooltip>
+                                    <Typography variant="h5" fontWeight={900} sx={{ color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+  {displayPrice === undefined ? (
+    <CircularProgress size={18} sx={{ verticalAlign: 'middle' }} />
+  ) : displayPrice === null ? (
+    'N/A'
+  ) : (
+    displayPrice.toFixed(2)
+  )}
+</Typography>
+                                    {peakGain !== null && peakGain !== 0 && (
+                                      <>
+                                        <MobileTooltip title="Peak Gain: The highest percentage increase from the first detected price to the highest price reached since detection.">
+                                          <InfoOutlined sx={{ fontSize: { xs: 24, sm: 20 }, color: 'success.main', ml: 2, mr: 1 }} />
+                                        </MobileTooltip>
+                                        <Typography variant="h5" fontWeight={900} sx={{ color: 'success.main', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                                          {peakGain.toFixed(2)}%
+                                        </Typography>
+                                      </>
+                                    )}
+                                  </Box>
+                                  {ohlcv.length === 0 && (
+                                    <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                                      No price history available for this symbol.
                                     </Typography>
-                                  </>
-                                )}
-                              </Box>
-                              {ohlcv.length === 0 && (
-                                <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1 }}>
-                                  No price history available for this symbol.
-                                </Typography>
-                              )}
-                            </Card>
-                          </Grid>
-                        );
-                      })}
-                    </Grid>
-                    {/* If both are empty */}
-                    {t1.length === 0 && filteredStocks.length === 0 && (
-                      <Typography color="text.secondary" sx={{ mt: 2 }}>No picks for this date.</Typography>
+                                  )}
+                                </Card>
+                              </Grid>
+                            );
+                          })}
+                        </Grid>
+                      </>
                     )}
                   </AccordionDetails>
                 </Accordion>
