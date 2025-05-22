@@ -34,6 +34,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  // Removed ArrowUpwardIcon,
+  // Removed ArrowDownwardIcon,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -50,6 +52,8 @@ import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { green } from '@mui/material/colors';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
 // Style definitions
 const CardStyles = {
@@ -2343,22 +2347,7 @@ export default function CSEInsightsPage() {
         )}
         {tab === 2 && (
           <Box sx={{ mt: 2 }}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2 }}>Legend: Understanding Key Terms</Typography>
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
-                  <li>
-                    <b>📈 Relative Strength (RS):</b> A momentum indicator that compares the performance of a stock to the overall market or to the ASI.
-                  </li>
-                  <li>
-                    <b>🔄 Bullish Divergence:</b> Occurs when the stock's price is making lower lows, but the RSI is making higher lows.
-                  </li>
-                  <li>
-                    <b>📊 Volume Analysis:</b> Indicates the level of trading activity and potential market interest in a stock.
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+            <PerformanceTab selectedDate={selectedDate} />
           </Box>
         )}
         {loading && (
@@ -2416,3 +2405,286 @@ function CustomTooltip({ active, payload, label }: any) {
     </div>
   );
 } 
+
+// Add this new component at the end of the file
+function PerformanceTab({ selectedDate }: { selectedDate: Date | null }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    setLoading(true);
+    setError(null);
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    fetch(`https://cse-maverick-be-platform.onrender.com/pick-performance-analysis?date=${dateStr}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch performance data');
+        return res.json();
+      })
+      .then(setData)
+      .catch(() => setError('Failed to load performance data'))
+      .finally(() => setLoading(false));
+  }, [selectedDate]);
+
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>;
+  if (error) return <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>;
+  if (!data) return null;
+
+  const { summary, tier1_picks, tier2_picks } = data.data || {};
+
+  // Determine which stats and picks to show
+  const showTier1 = summary?.tier1 && summary.tier1.total_picks > 0 && tier1_picks && tier1_picks.length > 0;
+  const showTier2 = summary?.tier2 && summary.tier2.total_picks > 0 && tier2_picks && tier2_picks.length > 0;
+
+  // Prepare sorted picks
+  const sortedTier1 = showTier1 ? [...tier1_picks].sort((a, b) => parseFloat(b.peak_gain_pct) - parseFloat(a.peak_gain_pct)) : [];
+  const sortedTier2 = showTier2 ? [...tier2_picks].sort((a, b) => parseFloat(b.peak_gain_pct) - parseFloat(a.peak_gain_pct)) : [];
+
+  // Prepare rounded summary values
+  const t1 = summary?.tier1 || {};
+  const t2 = summary?.tier2 || {};
+  const t1AvgDaysToPeak = t1.avg_days_to_peak ? Math.ceil(Number(t1.avg_days_to_peak)) : 0;
+  const t1AvgPeakGain = t1.avg_peak_gain ? Math.ceil(Number(t1.avg_peak_gain)) : 0;
+  const t1MaxPeakGain = t1.max_peak_gain ? Math.ceil(Number(t1.max_peak_gain)) : 0;
+  const t2AvgDaysToPeak = t2.avg_days_to_peak ? Math.ceil(Number(t2.avg_days_to_peak)) : 0;
+  const t2AvgPeakGain = t2.avg_peak_gain ? Math.ceil(Number(t2.avg_peak_gain)) : 0;
+  const t2MaxPeakGain = t2.max_peak_gain ? Math.ceil(Number(t2.max_peak_gain)) : 0;
+
+  // Calculate total picks, picks above 5%, and hit rate
+  let totalPicks = 0;
+  let picksAbove5 = 0;
+  if (showTier1) {
+    totalPicks += sortedTier1.length;
+    picksAbove5 += sortedTier1.filter(p => parseFloat(p.peak_gain_pct) > 5).length;
+  }
+  if (showTier2) {
+    totalPicks += sortedTier2.length;
+    picksAbove5 += sortedTier2.filter(p => parseFloat(p.peak_gain_pct) > 5).length;
+  }
+  const hitRate = totalPicks > 0 ? Math.round((picksAbove5 / totalPicks) * 100) : 0;
+
+  // Gather all picks for mode/average calculations
+  const allPicks = [
+    ...(sortedTier1 || []),
+    ...(sortedTier2 || [])
+  ];
+
+  // 1. Find the most common days_to_peak for picks with peak_gain_pct > 4.5
+  const daysToPeakCounts: Record<number, number> = {};
+  allPicks.forEach(pick => {
+    const gain = parseFloat(pick.peak_gain_pct);
+    const days = Number(pick.days_to_peak);
+    if (gain > 4.9) {
+      daysToPeakCounts[days] = (daysToPeakCounts[days] || 0) + 1;
+    }
+  });
+  let modeDaysToPeak = null;
+  let maxCount = 0;
+  for (const [days, count] of Object.entries(daysToPeakCounts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      modeDaysToPeak = Number(days);
+    }
+  }
+
+  // 2. Calculate average peak gain for picks with days_to_peak == modeDaysToPeak
+  let avgPeakGainForMode = 0;
+  if (modeDaysToPeak !== null) {
+    const relevantPicks = allPicks.filter(pick => Number(pick.days_to_peak) === modeDaysToPeak);
+    if (relevantPicks.length > 0) {
+      avgPeakGainForMode =
+        relevantPicks.reduce((sum, pick) => sum + parseFloat(pick.peak_gain_pct), 0) / relevantPicks.length;
+    }
+  }
+
+  return (
+    <Box>
+      <Typography variant="h6" sx={{ mb: 2 }}>Performance Summary</Typography>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <Card variant="outlined" sx={{
+            borderRadius: 3,
+            boxShadow: 3,
+            p: { xs: 2, sm: 3 },
+            bgcolor: 'background.paper',
+            maxWidth: 420,
+            mx: 'auto',
+            mb: 2,
+            transition: 'box-shadow 0.2s',
+            '&:hover': { boxShadow: 6 },
+          }}>
+            <CardContent>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: '1.1rem', lineHeight: 1.7 }}>
+                <li>
+                  <MobileTooltip title="The most common number of days it took for a stock to reach more than 5% gain after being picked.">
+                    <span style={{ textDecoration: 'underline', textDecorationStyle: 'dotted', cursor: 'pointer' }}>Avg Number of Days to Peak</span>
+                  </MobileTooltip>: <b>{modeDaysToPeak !== null ? modeDaysToPeak : '-'}</b>
+                </li>
+                <li>
+                  <MobileTooltip title="The average peak gain for all stocks that reached their peak in the above number of days.">
+                    <span style={{ textDecoration: 'underline', textDecorationStyle: 'dotted', cursor: 'pointer' }}>Avg Peak Gain</span>
+                  </MobileTooltip>: <b style={{ color: '#22c55e' }}>{modeDaysToPeak !== null ? Math.ceil(avgPeakGainForMode) + '%' : '-'}</b>
+                </li>
+                <li>Max Peak Gain: <b style={{ color: '#22c55e' }}>
+  {allPicks.length > 0 ? Math.ceil(Math.max(...allPicks.map(p => parseFloat(p.peak_gain_pct)))) + '%' : '-'}
+</b></li>
+              </ul>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card variant="outlined" sx={{
+            borderRadius: 3,
+            boxShadow: 3,
+            p: { xs: 2, sm: 3 },
+            bgcolor: 'background.paper',
+            maxWidth: 420,
+            mx: 'auto',
+            mb: 2,
+            transition: 'box-shadow 0.2s',
+            '&:hover': { boxShadow: 6 },
+          }}>
+            <CardContent>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: '1.1rem', lineHeight: 1.7 }}>
+                <li>Total Picks: <b>{totalPicks}</b></li>
+                <li>Total Picks Above 5%: <b>{picksAbove5}</b></li>
+                <li>Hit Rate: <b style={{ color: '#22c55e' }}>{hitRate}%</b></li>
+              </ul>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+      {/* Table listings */}
+      {showTier1 && (
+        <>
+          <Typography variant="h6" sx={{ mb: 2 }}>Picks</Typography>
+          <PerformanceTable picks={sortedTier1} />
+        </>
+      )}
+      {showTier2 && (
+        <>
+          {!showTier1 && <Typography variant="h6" sx={{ mb: 2 }}>Picks</Typography>}
+          <PerformanceTable picks={sortedTier2} />
+        </>
+      )}
+      {!showTier1 && !showTier2 && (
+        <Typography color="text.secondary">No picks available for this period.</Typography>
+      )}
+    </Box>
+  );
+}
+
+function PerformanceTable({ picks }: { picks: any[] }) {
+  const [sortBy, setSortBy] = useState<'symbol' | 'pick_date' | 'pick_price' | 'peak_gain_pct' | 'days_to_peak'>('peak_gain_pct');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (col: typeof sortBy) => {
+    if (sortBy === col) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(col);
+      setSortDir('desc');
+    }
+  };
+
+  const sorted = [...picks].sort((a, b) => {
+    let aVal = a[sortBy];
+    let bVal = b[sortBy];
+    if (sortBy === 'peak_gain_pct' || sortBy === 'pick_price' || sortBy === 'days_to_peak') {
+      aVal = parseFloat(aVal);
+      bVal = parseFloat(bVal);
+    }
+    if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const headerStyle: React.CSSProperties = {
+    cursor: 'pointer',
+    userSelect: 'none',
+    fontWeight: 700,
+    fontSize: '1.05rem',
+    padding: '1.2rem 0.75rem',
+    background: '#f3f4f6',
+    borderBottom: '2px solid #e5e7eb',
+    position: 'relative',
+    textAlign: 'left',
+    transition: 'background 0.2s',
+    zIndex: 2,
+    whiteSpace: 'nowrap',
+  };
+
+  const stickyStyle = (left: number): React.CSSProperties => ({
+    position: 'sticky',
+    left,
+    zIndex: 3,
+    background: '#f3f4f6',
+    boxShadow: '2px 0 4px -2px #e5e7eb',
+  });
+
+  const stickyCellStyle = (left: number): React.CSSProperties => ({
+    position: 'sticky',
+    left,
+    zIndex: 1,
+    background: '#fff',
+    borderRight: '1px solid #e5e7eb',
+    fontWeight: 600,
+    padding: '1.2rem 0.75rem',
+    whiteSpace: 'nowrap',
+  });
+
+  return (
+    <Paper style={{ width: '100%', overflowX: 'auto', marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px #e0e7ef', padding: 0, background: '#fafdff' }}>
+      <table
+        style={{
+          minWidth: 600,
+          borderCollapse: 'separate',
+          borderSpacing: 0,
+          width: '100%',
+          fontSize: '1rem',
+        }}
+      >
+        <thead>
+          <tr>
+            <th onClick={() => handleSort('symbol')} style={{ ...headerStyle, ...stickyStyle(0), minWidth: 120, color: sortBy === 'symbol' ? '#2563eb' : undefined }}>
+              Symbol {sortBy === 'symbol' && (sortDir === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
+            </th>
+            <th onClick={() => handleSort('pick_date')} style={{ ...headerStyle, ...stickyStyle(120), minWidth: 120, color: sortBy === 'pick_date' ? '#2563eb' : undefined }}>
+              Pick Date {sortBy === 'pick_date' && (sortDir === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
+            </th>
+            <th onClick={() => handleSort('pick_price')} style={{ ...headerStyle, color: sortBy === 'pick_price' ? '#2563eb' : undefined }}>
+              Pick Price {sortBy === 'pick_price' && (sortDir === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
+            </th>
+            <th onClick={() => handleSort('peak_gain_pct')} style={{ ...headerStyle, color: sortBy === 'peak_gain_pct' ? '#2563eb' : undefined }}>
+              Peak Gain (%) {sortBy === 'peak_gain_pct' && (sortDir === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
+            </th>
+            <th onClick={() => handleSort('days_to_peak')} style={{ ...headerStyle, color: sortBy === 'days_to_peak' ? '#2563eb' : undefined }}>
+              Days to Peak {sortBy === 'days_to_peak' && (sortDir === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((row, idx) => (
+            <tr
+              key={row.symbol + row.pick_date + idx}
+              style={{
+                background: idx % 2 === 0 ? '#fff' : '#f3f4f6',
+                borderBottom: '1px solid #e5e7eb',
+                transition: 'background 0.2s',
+                cursor: 'pointer',
+                minHeight: 48,
+              }}
+            >
+              <td style={{ ...stickyCellStyle(0) }}>{row.symbol}</td>
+              <td style={{ ...stickyCellStyle(120) }}>{row.pick_date}</td>
+              <td style={{ padding: '1.2rem 0.75rem' }}>{row.pick_price}</td>
+              <td style={{ padding: '1.2rem 0.75rem', color: '#22c55e', fontWeight: 700 }}>{row.peak_gain_pct}</td>
+              <td style={{ padding: '1.2rem 0.75rem' }}>{row.days_to_peak}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Paper>
+  );
+}
