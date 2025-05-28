@@ -5,11 +5,13 @@ import {
   Notifications,
   AccountCircle,
   MenuBook,
+  Timeline,
 } from '@mui/icons-material';
 
 export const navLinks = [
   { icon: <Home />, label: 'Home', path: '/' },
   { icon: <BarChart />, label: 'CSE Insights by Maverick', path: '/cse-insights' },
+  { icon: <Timeline />, label: 'Volume Profile', path: '/volume-profile' },
   { icon: <MenuBook />, label: 'Fundamental Analysis', path: '/fundamental-analysis' },
   { icon: <BarChart />, label: 'Technical Analysis', path: '/technical-analysis' },
   { icon: <BarChart />, label: 'Sector Analysis', path: '/sector-analysis' },
