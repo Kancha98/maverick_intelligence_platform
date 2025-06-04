@@ -239,51 +239,43 @@ export default function TechnicalAnalysisPage() {
     setActiveTab(newValue);
   };
 
-  // Function to fetch technical analysis data
+  // Function to fetch technical analysis data for main tabs
   const fetchTechnicalData = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('Fetching technical analysis data...');
-      const response = await fetch('/api/technical-analysis/data', { 
+      console.log('Fetching main technical analysis data...');
+      const startDateStr = startDate?.toISOString().split('T')[0] || '';
+      const endDateStr = endDate?.toISOString().split('T')[0] || '';
+      
+      // Use the correct endpoint for main tabs (without symbol filter)
+      const url = `https://cse-maverick-be-platform.onrender.com/technical-analysis?start_date=${startDateStr}&end_date=${endDateStr}`;
+      
+      console.log('Fetching main data from URL:', url);
+      
+      const response = await fetch(url, { 
         cache: 'no-store',
         headers: { 'Accept': 'application/json' }
       });
       
-      console.log(`API response status: ${response.status}`);
-      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Error fetching data: ${response.status}`, errorText);
-        throw new Error(`Error fetching data: ${response.status} - ${errorText}`);
+        throw new Error(`Error fetching main data: ${response.status} - ${errorText}`);
       }
       
       const responseData = await response.json();
       
       if (responseData.error) {
-        console.error(`API returned error:`, responseData.error);
         throw new Error(responseData.error);
       }
       
       const fetchedData = responseData.data || [];
-      console.log(`Received ${fetchedData.length} technical analysis records`);
-      
-      if (!fetchedData || !Array.isArray(fetchedData) || fetchedData.length === 0) {
-        console.warn('No technical analysis data received or empty array');
-        setStockData([]);
-        setFilteredData([]);
-        setTier1Data([]);
-        setTier2Data([]);
-        setTier3Data([]);
-        setLoading(false);
-        return;
-      }
       
       // Convert API data to StockData format
       const formattedData: StockData[] = fetchedData.map((item: any) => ({
         symbol: item.symbol || '',
-        date: item.date || new Date().toISOString().split('T')[0],
+        date: item.date || '',
         closing_price: typeof item.closing_price === 'number' ? item.closing_price : 0,
         change_pct: typeof item.change_pct === 'number' ? item.change_pct : 0,
         volume: typeof item.volume === 'number' ? item.volume : 0,
@@ -328,7 +320,7 @@ export default function TechnicalAnalysisPage() {
       setTier3Data(tier3);
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch technical analysis data';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch main technical analysis data';
       console.error('Error in fetchTechnicalData:', errorMessage, err);
       setError(errorMessage);
     } finally {
@@ -336,10 +328,19 @@ export default function TechnicalAnalysisPage() {
     }
   };
 
+  // Add useEffect to fetch main data on component mount
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchTechnicalData();
+    }
+  }, [startDate, endDate]); // Only depend on date changes for main data
+
   // Add useEffect to fetch data on component mount
   useEffect(() => {
-    fetchTechnicalData();
-  }, []);
+    if (startDate && endDate) {
+      fetchTechnicalData();
+    }
+  }, [startDate, endDate, symbolFilter]); // Add symbolFilter as a dependency
 
   // Add a refresh function to manually refresh data
   const refreshData = () => {
@@ -539,15 +540,14 @@ export default function TechnicalAnalysisPage() {
     try {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
-      console.log('Fetching data with params:', {
+      console.log('Fetching DIY analysis data with params:', {
         start_date: startDateStr,
-        end_date: endDateStr
+        end_date: endDateStr,
+        symbol: symbolFilter
       });
       
-      // If symbol filter is empty or "All", fetch data for all symbols
-      const url = symbolFilter 
-        ? `https://cse-maverick-be-platform.onrender.com/technical-analysis?symbol=${encodeURIComponent(symbolFilter)}&start_date=${startDateStr}&end_date=${endDateStr}`
-        : `https://cse-maverick-be-platform.onrender.com/technical-analysis?start_date=${startDateStr}&end_date=${endDateStr}`;
+      // Use a separate API call for DIY analysis
+      const url = `https://cse-maverick-be-platform.onrender.com/technical-analysis?start_date=${startDateStr}&end_date=${endDateStr}${symbolFilter ? `&symbol=${encodeURIComponent(symbolFilter)}` : ''}`;
       
       const response = await fetch(url, {
         cache: 'no-store',
@@ -567,9 +567,10 @@ export default function TechnicalAnalysisPage() {
 
       console.log('Number of records received:', responseData.data.length);
       
-      // Convert API data to StockData format
-      const results = responseData.data.map((item: any) => {
-        const formattedItem = {
+      // Convert API data to StockData format and filter by symbol if specified
+      const results = responseData.data
+        .filter((item: any) => !symbolFilter || item.symbol === symbolFilter)
+        .map((item: any) => ({
           symbol: item.symbol || '',
           date: item.date || '',
           closing_price: typeof item.closing_price === 'number' ? item.closing_price : 0,
@@ -586,13 +587,10 @@ export default function TechnicalAnalysisPage() {
           ema_200: item.ema_200,
           vol_avg_5d: item.vol_avg_5d,
           vol_avg_20d: item.vol_avg_20d
-        };
-        console.log('Formatted item:', formattedItem);
-        return formattedItem;
-      });
+        }));
 
-      console.log('Final formatted results:', results);
-      console.log('Number of formatted results:', results.length);
+      console.log('After symbol filtering:', results);
+      console.log('Number of results after symbol filtering:', results.length);
 
       // Apply remaining DIY filters (RSI, divergence, volume analysis, turnover, EMA)
       let filteredResults = results;
@@ -1439,7 +1437,11 @@ export default function TechnicalAnalysisPage() {
                               <InputLabel>Symbol</InputLabel>
                               <Select
                                 value={symbolFilter}
-                                onChange={(e) => setSymbolFilter(e.target.value)}
+                                onChange={(e) => {
+                                  setSymbolFilter(e.target.value);
+                                  // Clear the current filtered data when symbol changes
+                                  setDiyFilteredData([]);
+                                }}
                                 label="Symbol"
                               >
                                 <MenuItem value="">
@@ -1481,7 +1483,7 @@ export default function TechnicalAnalysisPage() {
                                 </MenuItem>
                                 <MenuItem value="High Bullish Momentum">High Bullish Momentum</MenuItem>
                                 <MenuItem value="Emerging Bullish Momentum">Emerging Bullish Momentum</MenuItem>
-                                <MenuItem value="Increase in Weekly Volume Activity Detected">Increase in Weekly Volume Activity Detected</MenuItem>
+                                <MenuItem value="Increase in weekly Volume Activity Detected">Increase in Weekly Volume</MenuItem>
                                 <MenuItem value="Suspicious Volume Spike (Possible Noise)">Suspicious Volume Spike (Possible Noise)</MenuItem>
                               </Select>
                             </FormControl>

@@ -28,13 +28,16 @@ import {
   Zoom,
   Chip,
   Tooltip,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import CloseIcon from '@mui/icons-material/Close';
 import Sidebar from '../../components/Sidebar';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 
 interface TradeData {
   id: number;
@@ -94,55 +97,76 @@ const formatNetChange = (value: number) => {
   return `${value >= 0 ? '+' : ''}${value}%`;
 };
 
-const CustomTooltip = ({ active, payload, label, keyLevels }: CustomTooltipProps) => {
+const CustomTooltip = ({ active, payload, label, keyLevels, tillDateMode = false }: CustomTooltipProps & { tillDateMode?: boolean }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const isSupportLevel = keyLevels.support.some((level: KeyLevel) => Math.abs(level.price - data.price) < 0.01);
-    const isResistanceLevel = keyLevels.resistance.some((level: KeyLevel) => Math.abs(level.price - data.price) < 0.01);
-    
-    let levelType = '';
-    if (isSupportLevel) {
-      levelType = 'Heavy Support Level';
-    } else if (isResistanceLevel) {
-      levelType = 'Heavy Resistance Level';
-    }
-
-    return (
-      <Box
-        sx={{
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(4px)',
-          border: '1px solid rgba(0, 0, 0, 0.1)',
-          borderRadius: '8px',
-          padding: '12px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        <Typography variant="subtitle2" sx={{ color: '#1e293b', fontWeight: 600, mb: 1 }}>
-          Price: {data.price?.toFixed(2) || 'N/A'}
-        </Typography>
-        <Typography variant="body2" sx={{ color: '#475569', mb: 0.5 }}>
-          Volume: {data.quantity?.toLocaleString() || 'N/A'}
-        </Typography>
-        <Typography variant="body2" sx={{ color: '#475569', mb: 0.5 }}>
-          Net Change: {formatNetChange(data.netChange || 0)}
-        </Typography>
-        {levelType && (
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              color: isSupportLevel ? '#166534' : '#991b1b',
-              fontWeight: 600,
-              mt: 1,
-              pt: 1,
-              borderTop: '1px solid rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            {levelType}
+    if (tillDateMode) {
+      // Simpler tooltip for Till Date tab
+      return (
+        <Box
+          sx={{
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(4px)',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+            borderRadius: '8px',
+            padding: '12px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ color: '#1e293b', fontWeight: 600, mb: 1 }}>
+            Price: {data.price?.toFixed(2) || 'N/A'}
           </Typography>
-        )}
-      </Box>
-    );
+          <Typography variant="body2" sx={{ color: '#475569', mb: 0.5 }}>
+            Volume: {data.quantity?.toLocaleString() || 'N/A'}
+          </Typography>
+        </Box>
+      );
+    } else {
+      const isSupportLevel = keyLevels.support.some((level: KeyLevel) => Math.abs(level.price - data.price) < 0.01);
+      const isResistanceLevel = keyLevels.resistance.some((level: KeyLevel) => Math.abs(level.price - data.price) < 0.01);
+      let levelType = '';
+      if (isSupportLevel) {
+        levelType = 'Heavy Support Level';
+      } else if (isResistanceLevel) {
+        levelType = 'Heavy Resistance Level';
+      }
+      return (
+        <Box
+          sx={{
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(4px)',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+            borderRadius: '8px',
+            padding: '12px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ color: '#1e293b', fontWeight: 600, mb: 1 }}>
+            Price: {data.price?.toFixed(2) || 'N/A'}
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#475569', mb: 0.5 }}>
+            Volume: {data.quantity?.toLocaleString() || 'N/A'}
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#475569', mb: 0.5 }}>
+            Net Change: {formatNetChange(data.netChange || 0)}
+          </Typography>
+          {levelType && (
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: isSupportLevel ? '#166534' : '#991b1b',
+                fontWeight: 600,
+                mt: 1,
+                pt: 1,
+                borderTop: '1px solid rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              {levelType}
+            </Typography>
+          )}
+        </Box>
+      );
+    }
   }
   return null;
 };
@@ -275,6 +299,177 @@ function MiniCandlestick({ ohlc }: { ohlc: OHLCVData | undefined }) {
   );
 }
 
+function PriceMovementChart({ ohlcv }: { ohlcv: OHLCVData[] }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!ohlcv || ohlcv.length === 0) return null;
+
+  const chartData = ohlcv.map(item => ({
+    date: new Date(item.date).toLocaleDateString(),
+    close: item.close
+  }));
+
+  const startDate = new Date(ohlcv[0].date).toLocaleDateString();
+  const endDate = new Date(ohlcv[ohlcv.length - 1].date).toLocaleDateString();
+  const peakPrice = Math.max(...ohlcv.map(item => item.close));
+
+  const handleClick = () => {
+    setExpanded(!expanded);
+  };
+
+  return (
+    <>
+      <Box 
+        onClick={handleClick}
+        sx={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          bgcolor: 'rgba(255,255,255,0.95)',
+          borderRadius: 2,
+          boxShadow: 2,
+          p: 1,
+          zIndex: 10,
+          width: 200,
+          height: 120,
+          cursor: 'pointer',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: 4,
+            transform: 'scale(1.02)'
+          }
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700 }}>Price Movement</Typography>
+          <Typography variant="caption" sx={{ color: '#16a34a', fontWeight: 600 }}>
+            Peak Close: {peakPrice.toFixed(2)}
+          </Typography>
+        </Box>
+        <ResponsiveContainer width="100%" height="60%">
+          <LineChart data={chartData}>
+            <Line 
+              type="monotone" 
+              dataKey="close" 
+              stroke="#22c55e" 
+              strokeWidth={2}
+              dot={false}
+            />
+            <XAxis 
+              dataKey="date" 
+              hide={true}
+            />
+            <YAxis 
+              hide={true}
+              domain={['auto', 'auto']}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+        <Box sx={{ mt: 0.5, fontSize: '0.7rem', color: '#64748b' }}>
+          <Typography variant="caption" sx={{ display: 'block' }}>
+            {startDate} - {endDate}
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Expanded View */}
+      {expanded && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 2
+          }}
+          onClick={handleClick}
+        >
+          <Paper
+            elevation={3}
+            sx={{
+              width: '90%',
+              maxWidth: 1000,
+              height: '80%',
+              p: 3,
+              position: 'relative',
+              bgcolor: 'white',
+              borderRadius: 2
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Price Movement Analysis
+              </Typography>
+              <IconButton onClick={handleClick} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+            <Box sx={{ height: 'calc(100% - 60px)' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="date"
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={{ stroke: '#e2e8f0' }}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={{ stroke: '#e2e8f0' }}
+                    tickFormatter={(value) => value.toFixed(2)}
+                  />
+                  <RechartsTooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const price = typeof payload[0].value === 'number' ? payload[0].value.toFixed(2) : payload[0].value;
+                        return (
+                          <Box
+                            sx={{
+                              bgcolor: 'white',
+                              p: 1,
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 1,
+                              boxShadow: 1
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ color: '#64748b' }}>
+                              Date: {label}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#16a34a', fontWeight: 600 }}>
+                              Price: {price}
+                            </Typography>
+                          </Box>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="close" 
+                    stroke="#22c55e" 
+                    strokeWidth={2}
+                    dot={{ fill: '#22c55e', strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: '#22c55e' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+          </Paper>
+        </Box>
+      )}
+    </>
+  );
+}
+
 // Helper to get today's date in YYYY-MM-DD format
 const getTodayString = () => {
   const today = new Date();
@@ -282,6 +477,13 @@ const getTodayString = () => {
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+};
+
+// Helper to format date as M/D/YYYY
+const formatShortDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 };
 
 export default function VolumeProfilePage() {
@@ -296,6 +498,9 @@ export default function VolumeProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [keyLevels, setKeyLevels] = useState<{ support: KeyLevel[], resistance: KeyLevel[] }>({ support: [], resistance: [] });
   const [ohlcvData, setOHLCVData] = useState<OHLCVData[]>([]);
+  const [selectedTab, setSelectedTab] = useState(0);
+  // Sorting state for table
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'price', direction: 'asc' });
 
   useEffect(() => {
     const fetchSymbols = async () => {
@@ -315,7 +520,11 @@ export default function VolumeProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`https://cse-maverick-be-platform.onrender.com/api/trade-summary/${symbol}`);
+      const endpoint = selectedTab === 0
+        ? `https://cse-maverick-be-platform.onrender.com/api/trade-summary/${symbol}`
+        : `https://cse-maverick-be-platform.onrender.com/api/trade-summary-history/${symbol}`;
+      
+      const response = await fetch(endpoint);
       if (!response.ok) throw new Error('Failed to fetch trade data');
       const data: ApiResponse = await response.json();
       setTradeData(data.data);
@@ -343,7 +552,7 @@ export default function VolumeProfilePage() {
       fetchTradeData();
       fetchOHLCVData();
     }
-  }, [symbol]);
+  }, [symbol, selectedTab]);
 
   useEffect(() => {
     if (tradeData.length > 0 && summary?.latest_price && ohlcvData.length > 0) {
@@ -400,6 +609,47 @@ export default function VolumeProfilePage() {
       // fallback to latest available (assume sorted oldest to newest)
       todaysOhlc = ohlcvData[ohlcvData.length - 1];
     }
+  }
+
+  // For sortable table (Till Date tab)
+  const sortedTradeData = React.useMemo(() => {
+    if (selectedTab !== 1) return tradeData;
+    const sorted = [...tradeData];
+    sorted.sort((a, b) => {
+      let aValue: number, bValue: number;
+      switch (sortConfig.key) {
+        case 'price':
+          aValue = parseFloat(a.price);
+          bValue = parseFloat(b.price);
+          break;
+        case 'quantity':
+          aValue = a.quantity;
+          bValue = b.quantity;
+          break;
+        case 'no_of_trades':
+          aValue = a.no_of_trades;
+          bValue = b.no_of_trades;
+          break;
+        default:
+          aValue = 0;
+          bValue = 0;
+      }
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [tradeData, sortConfig, selectedTab]);
+
+  // For time period display (prefer summary.date_range for Till Date tab)
+  let periodStart = '';
+  let periodEnd = '';
+  if (selectedTab === 1 && summary && (summary as any).date_range) {
+    periodStart = formatShortDate((summary as any).date_range.start_date);
+    periodEnd = formatShortDate((summary as any).date_range.end_date);
+  } else if (ohlcvData.length > 0) {
+    periodStart = new Date(ohlcvData[0].date).toLocaleDateString();
+    periodEnd = new Date(ohlcvData[ohlcvData.length - 1].date).toLocaleDateString();
   }
 
   return (
@@ -479,6 +729,30 @@ export default function VolumeProfilePage() {
                 ))}
               </Select>
             </FormControl>
+
+            <Tabs 
+              value={selectedTab} 
+              onChange={(_, newValue) => setSelectedTab(newValue)}
+              sx={{
+                borderBottom: 1,
+                borderColor: 'divider',
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  minWidth: 0,
+                  px: 2,
+                },
+                '& .Mui-selected': {
+                  color: '#22c55e',
+                },
+                '& .MuiTabs-indicator': {
+                  backgroundColor: '#22c55e',
+                },
+              }}
+            >
+              <Tab label="Latest Day's Volume Profile" />
+              <Tab label="Till Date Volume Profile" />
+            </Tabs>
           </Paper>
         </Fade>
 
@@ -518,9 +792,11 @@ export default function VolumeProfilePage() {
                 overflow: 'hidden'
               }}
             >
-              {/* Mini Candlestick in top-right corner */}
-              {todaysOhlc && (
-                <MiniCandlestick ohlc={todaysOhlc} />
+              {/* Show MiniCandlestick for Latest Day view and PriceMovementChart for Till Date view */}
+              {selectedTab === 0 ? (
+                todaysOhlc && <MiniCandlestick ohlc={todaysOhlc} />
+              ) : (
+                ohlcvData.length > 0 && <PriceMovementChart ohlcv={ohlcvData} />
               )}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <Typography 
@@ -531,27 +807,38 @@ export default function VolumeProfilePage() {
                   }}
                 >
                   {symbol}
+                  {/* Show time period for Till Date tab */}
+                  {selectedTab === 1 && periodStart && periodEnd && (
+                    <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#64748b', marginLeft: 8 }}>
+                      ({periodStart} - {periodEnd})
+                    </span>
+                  )}
                 </Typography>
-                <Chip 
-                  label={summary?.date} 
-                  size="small" 
-                  sx={{ 
-                    bgcolor: '#f1f5f9',
-                    fontWeight: 500
-                  }} 
-                />
-                <Tooltip title="Cash Map shows the ratio of buy volume to total volume">
-                  <Chip 
-                    icon={<InfoOutlinedIcon />}
-                    label={`Cash Map: ${calculateCashMap(tradeData)}%`}
-                    size="small"
-                    sx={{ 
-                      bgcolor: '#f0fdf4',
-                      color: '#16a34a',
-                      fontWeight: 600
-                    }}
-                  />
-                </Tooltip>
+                {/* Only show summary chips for Latest Day tab */}
+                {selectedTab === 0 && (
+                  <>
+                    <Chip 
+                      label={summary?.date} 
+                      size="small" 
+                      sx={{ 
+                        bgcolor: '#f1f5f9',
+                        fontWeight: 500
+                      }} 
+                    />
+                    <Tooltip title="Cash Map shows the ratio of buy volume to total volume">
+                      <Chip 
+                        icon={<InfoOutlinedIcon />}
+                        label={`Cash Map: ${calculateCashMap(tradeData)}%`}
+                        size="small"
+                        sx={{ 
+                          bgcolor: '#f0fdf4',
+                          color: '#16a34a',
+                          fontWeight: 600
+                        }}
+                      />
+                    </Tooltip>
+                  </>
+                )}
               </Box>
               <Box 
                 sx={{ 
@@ -573,16 +860,6 @@ export default function VolumeProfilePage() {
                     data={chartData}
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
-                    <defs>
-                      <linearGradient id="positiveGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0.3}/>
-                      </linearGradient>
-                      <linearGradient id="negativeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0.3}/>
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid 
                       strokeDasharray="3 3" 
                       stroke="#e2e8f0"
@@ -620,7 +897,7 @@ export default function VolumeProfilePage() {
                       tickLine={{ stroke: '#e2e8f0' }}
                     />
                     <RechartsTooltip 
-                      content={<CustomTooltip keyLevels={keyLevels} />}
+                      content={<CustomTooltip keyLevels={keyLevels} tillDateMode={selectedTab === 1} />}
                       cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
                     />
                     <Bar 
@@ -628,10 +905,11 @@ export default function VolumeProfilePage() {
                       radius={[4, 4, 0, 0]}
                       animationDuration={1000}
                     >
+                      {/* Use neutral color for Till Date tab, else use getBarColor */}
                       {chartData.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={getBarColor(entry.price)}
+                          fill={selectedTab === 1 ? '#64748b' : getBarColor(entry.price)}
                         />
                       ))}
                     </Bar>
@@ -642,7 +920,7 @@ export default function VolumeProfilePage() {
           </Zoom>
         )}
 
-        {summary && (
+        {summary && selectedTab === 0 && (
           <Fade in={true} timeout={500}>
             <Paper 
               elevation={0} 
@@ -741,14 +1019,25 @@ export default function VolumeProfilePage() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Net Change</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Quantity</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>No. of Trades</TableCell>
+                    <TableCell sx={{ fontWeight: 700, cursor: selectedTab === 1 ? 'pointer' : 'default' }}
+                      onClick={selectedTab === 1 ? () => setSortConfig({ key: 'price', direction: sortConfig.key === 'price' && sortConfig.direction === 'asc' ? 'desc' : 'asc' }) : undefined}
+                    >
+                      Price {selectedTab === 1 && sortConfig.key === 'price' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, cursor: selectedTab === 1 ? 'pointer' : 'default' }}
+                      onClick={selectedTab === 1 ? () => setSortConfig({ key: 'quantity', direction: sortConfig.key === 'quantity' && sortConfig.direction === 'asc' ? 'desc' : 'asc' }) : undefined}
+                    >
+                      Quantity {selectedTab === 1 && sortConfig.key === 'quantity' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, cursor: selectedTab === 1 ? 'pointer' : 'default' }}
+                      onClick={selectedTab === 1 ? () => setSortConfig({ key: 'no_of_trades', direction: sortConfig.key === 'no_of_trades' && sortConfig.direction === 'asc' ? 'desc' : 'asc' }) : undefined}
+                    >
+                      No. of Trades {selectedTab === 1 && sortConfig.key === 'no_of_trades' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {tradeData.map((trade, index) => (
+                  {(selectedTab === 1 ? sortedTradeData : tradeData).map((trade, index) => (
                     <TableRow 
                       key={index}
                       hover
@@ -761,22 +1050,6 @@ export default function VolumeProfilePage() {
                       }}
                     >
                       <TableCell>LKR {parseFloat(trade.price).toFixed(2)}</TableCell>
-                      <TableCell 
-                        sx={{ 
-                          color: parseFloat(trade.net_change) >= 0 ? 'success.main' : 'error.main',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.5
-                        }}
-                      >
-                        {parseFloat(trade.net_change) >= 0 ? '+' : ''}{trade.net_change}%
-                        {parseFloat(trade.net_change) >= 0 ? (
-                          <TrendingUpIcon fontSize="small" />
-                        ) : (
-                          <TrendingDownIcon fontSize="small" />
-                        )}
-                      </TableCell>
                       <TableCell>{trade.quantity.toLocaleString()}</TableCell>
                       <TableCell>{trade.no_of_trades.toLocaleString()}</TableCell>
                     </TableRow>
