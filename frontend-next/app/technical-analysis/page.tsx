@@ -173,6 +173,9 @@ export default function TechnicalAnalysisPage() {
   // Add new state for symbols after other state declarations
   const [symbols, setSymbols] = useState<string[]>([]);
 
+  // Add new state for relative strength range
+  const [relativeStrengthRange, setRelativeStrengthRange] = useState<[number, number]>([0, 3]);
+
   // Add useEffect to fetch sectors on mount
   useEffect(() => {
     fetch('/api/sectors')
@@ -600,6 +603,14 @@ export default function TechnicalAnalysisPage() {
         console.log('Applying RSI filter:', rsiRange);
         filteredResults = filteredResults.filter((stock: StockData) =>
           stock.rsi >= rsiRange[0] && stock.rsi <= rsiRange[1]
+        );
+      }
+      
+      // Apply Relative Strength filter if the range is different from default
+      if (relativeStrengthRange && relativeStrengthRange.length === 2 && (relativeStrengthRange[0] !== 0 || relativeStrengthRange[1] !== 3)) {
+        console.log('Applying Relative Strength filter:', relativeStrengthRange);
+        filteredResults = filteredResults.filter((stock: StockData) =>
+          stock.relative_strength >= relativeStrengthRange[0] && stock.relative_strength <= relativeStrengthRange[1]
         );
       }
       
@@ -1511,6 +1522,28 @@ export default function TechnicalAnalysisPage() {
                             </Box>
                           </CardContent>
                         </Card>
+
+                        <Card variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
+                          <CardContent>
+                            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                              Relative Strength Range
+                            </Typography>
+                            <Box sx={{ px: 1 }}>
+                              <Slider
+                                value={relativeStrengthRange}
+                                onChange={(e, newValue) => setRelativeStrengthRange(newValue as [number, number])}
+                                valueLabelDisplay="auto"
+                                min={0}
+                                max={3}
+                                step={0.1}
+                              />
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">0</Typography>
+                                <Typography variant="body2" color="text.secondary">3</Typography>
+                              </Box>
+                            </Box>
+                          </CardContent>
+                        </Card>
                         
                         <Card variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
                           <CardContent>
@@ -1650,7 +1683,12 @@ export default function TechnicalAnalysisPage() {
                             <TableHead>
                               <TableRow sx={{ bgcolor: '#f8fafc' }}>
                                 <TableCell 
-                                  sx={{ position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper', minWidth: 90, fontWeight: 700, cursor: 'pointer' }}
+                                  sx={{ position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper', minWidth: 60, fontWeight: 700 }}
+                                >
+                                  #
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ position: 'sticky', left: 60, zIndex: 2, bgcolor: 'background.paper', minWidth: 90, fontWeight: 700, cursor: 'pointer' }}
                                   onClick={() => requestSort('date')}
                                 >
                                   Date
@@ -1659,7 +1697,7 @@ export default function TechnicalAnalysisPage() {
                                   )}
                                 </TableCell>
                                 <TableCell 
-                                  sx={{ position: 'sticky', left: 90, zIndex: 2, bgcolor: 'background.paper', minWidth: 120, fontWeight: 700, cursor: 'pointer' }}
+                                  sx={{ position: 'sticky', left: 150, zIndex: 2, bgcolor: 'background.paper', minWidth: 120, fontWeight: 700, cursor: 'pointer' }}
                                   onClick={() => requestSort('symbol')}
                                 >
                                   Symbol
@@ -1740,10 +1778,13 @@ export default function TechnicalAnalysisPage() {
                                     hover
                                     sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                   >
-                                    <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
+                                    <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 60 }}>
+                                      {index + 1}
+                                    </TableCell>
+                                    <TableCell sx={{ position: 'sticky', left: 60, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
                                       {new Date(stock.date).toLocaleDateString()}
                                     </TableCell>
-                                    <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
+                                    <TableCell sx={{ position: 'sticky', left: 150, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
                                       {stock.symbol}
                                     </TableCell>
                                     <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
@@ -1774,22 +1815,11 @@ export default function TechnicalAnalysisPage() {
                                     >
                                       {stock.relative_strength.toFixed(2)}
                                     </TableCell>
-                                    <TableCell>
-                                      <Chip 
-                                        label={stock.volume_analysis} 
-                                        size="small"
-                                        color={
-                                          stock.volume_analysis === 'High Bullish Momentum' ? 'success' :
-                                          stock.volume_analysis === 'Emerging Bullish Momentum' ? 'primary' : 'default'
-                                        }
-                                        sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
-                                      />
-                                    </TableCell>
                                   </TableRow>
                                 ))
                               ) : (
                                 <TableRow>
-                                  <TableCell colSpan={9} align="center">
+                                  <TableCell colSpan={10} align="center">
                                     <Typography variant="body2" color="text.secondary">
                                       No data available. Please select a symbol and date range.
                                     </Typography>
