@@ -6,6 +6,7 @@ import {
   AccountCircle,
   MenuBook,
   Timeline,
+  AttachMoney,
 } from '@mui/icons-material';
 
 export const navLinks = [
@@ -15,6 +16,7 @@ export const navLinks = [
   { icon: <MenuBook />, label: 'Fundamental Analysis', path: '/fundamental-analysis' },
   { icon: <BarChart />, label: 'Technical Analysis', path: '/technical-analysis' },
   { icon: <BarChart />, label: 'Sector Analysis', path: '/sector-analysis' },
+  { icon: <AttachMoney />, label: 'Dividend Analytics', path: '/Dividend-Analytics' },
   { icon: <Book />, label: 'Guide', path: '/guide' },
   { icon: <Notifications />, label: 'Notifications', path: '/notifications' },
   { icon: <AccountCircle />, label: 'Profile Management', path: '/profile' },
