@@ -170,6 +170,9 @@ export default function TechnicalAnalysisPage() {
   const [sectors, setSectors] = useState<SectorType[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
 
+  // Add new state for symbols after other state declarations
+  const [symbols, setSymbols] = useState<string[]>([]);
+
   // Add useEffect to fetch sectors on mount
   useEffect(() => {
     fetch('/api/sectors')
@@ -511,87 +514,147 @@ export default function TechnicalAnalysisPage() {
   }, [stockData, sectorCodes]);
 
   // Add a function to apply DIY filters
-  const applyDiyFilters = () => {
-    // Start with all data from stockData
-    let results = stockData;
-    console.log(`Starting DIY filter with ${results.length} stocks`);
-    
-    // Apply symbol filter
-    if (symbolFilter) {
-      results = results.filter(stock => 
-        stock.symbol.toLowerCase().includes(symbolFilter.toLowerCase())
-      );
-      console.log(`After symbol filter: ${results.length} stocks remaining`);
+  const applyDiyFilters = async () => {
+    // Only fetch if symbol and date range are provided
+    if (!symbolFilter || !startDate || !endDate) {
+      setDiyFilteredData([]);
+      return;
     }
-    
-    // Apply RSI range filter
-    if (rsiRange && rsiRange.length === 2) {
-      results = results.filter(stock => 
-        stock.rsi >= rsiRange[0] && stock.rsi <= rsiRange[1]
-      );
-      console.log(`After RSI filter (${rsiRange[0]}-${rsiRange[1]}): ${results.length} stocks remaining`);
-    }
-    
-    // Apply divergence filter
-    if (divergenceFilter) {
-      results = results.filter(stock => 
-        stock.rsi_divergence === divergenceFilter
-      );
-      console.log(`After divergence filter (${divergenceFilter}): ${results.length} stocks remaining`);
-    }
-    
-    // Apply volume analysis filter
-    if (volumeAnalysisFilter) {
-      results = results.filter(stock => 
-        stock.volume_analysis === volumeAnalysisFilter
-      );
-      console.log(`After volume analysis filter (${volumeAnalysisFilter}): ${results.length} stocks remaining`);
-    }
-    
-    // Apply turnover range filter
-    if (turnoverFilter.length > 0) {
-      results = results.filter(stock => {
-        if (turnoverFilter.includes('100K-1M') && stock.turnover >= 100000 && stock.turnover < 1000000) {
-          return true;
-        }
-        if (turnoverFilter.includes('1M-10M') && stock.turnover >= 1000000 && stock.turnover < 10000000) {
-          return true;
-        }
-        if (turnoverFilter.includes('10M-100M') && stock.turnover >= 10000000 && stock.turnover < 100000000) {
-          return true;
-        }
-        if (turnoverFilter.includes('100M+') && stock.turnover >= 100000000) {
-          return true;
-        }
-        return false;
+    setLoading(true);
+    setError(null);
+    try {
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      console.log('Fetching data with params:', {
+        symbol: symbolFilter,
+        start_date: startDateStr,
+        end_date: endDateStr
       });
-      console.log(`After turnover filter: ${results.length} stocks remaining`);
-    }
-    
-    // Apply EMA filters
-    if (Object.values(emaFilters).some(value => value)) {
-      results = results.filter(stock => {
-        const price = stock.closing_price;
-        
-        if (emaFilters.ema20 && stock.ema_20 && price < stock.ema_20) {
-          return false;
-        }
-        if (emaFilters.ema50 && stock.ema_50 && price < stock.ema_50) {
-          return false;
-        }
-        if (emaFilters.ema100 && stock.ema_100 && price < stock.ema_100) {
-          return false;
-        }
-        if (emaFilters.ema200 && stock.ema_200 && price < stock.ema_200) {
-          return false;
-        }
-        return true;
+      
+      const response = await fetch(`https://cse-maverick-be-platform.onrender.com/technical-analysis?symbol=${encodeURIComponent(symbolFilter)}&start_date=${startDateStr}&end_date=${endDateStr}`, {
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' }
       });
-      console.log(`After EMA filters: ${results.length} stocks remaining`);
+      
+      if (!response.ok) throw new Error('Failed to fetch filtered data');
+      
+      const responseData = await response.json();
+      console.log('Raw API Response:', responseData);
+      
+      // Check if we have data and it's in the expected format
+      if (!responseData.data || !Array.isArray(responseData.data)) {
+        console.error('Invalid data format:', responseData);
+        throw new Error('Invalid data format received');
+      }
+
+      console.log('Number of records received:', responseData.data.length);
+      
+      // Convert API data to StockData format
+      const results = responseData.data.map((item: any) => {
+        const formattedItem = {
+          symbol: item.symbol || '',
+          date: item.date || '',
+          closing_price: typeof item.closing_price === 'number' ? item.closing_price : 0,
+          change_pct: typeof item.change_pct === 'number' ? item.change_pct : 0,
+          volume: typeof item.volume === 'number' ? item.volume : 0,
+          turnover: typeof item.turnover === 'number' ? item.turnover : 0,
+          volume_analysis: item.volume_analysis || 'None',
+          rsi: typeof item.rsi === 'number' ? item.rsi : 50,
+          rsi_divergence: item.rsi_divergence || 'None',
+          relative_strength: typeof item.relative_strength === 'number' ? item.relative_strength : 1,
+          ema_20: item.ema_20,
+          ema_50: item.ema_50,
+          ema_100: item.ema_100,
+          ema_200: item.ema_200,
+          vol_avg_5d: item.vol_avg_5d,
+          vol_avg_20d: item.vol_avg_20d
+        };
+        console.log('Formatted item:', formattedItem);
+        return formattedItem;
+      });
+
+      console.log('Final formatted results:', results);
+      console.log('Number of formatted results:', results.length);
+
+      // Apply remaining DIY filters (RSI, divergence, volume analysis, turnover, EMA)
+      let filteredResults = results;
+      
+      // Only apply RSI filter if the range is different from default
+      if (rsiRange && rsiRange.length === 2 && (rsiRange[0] !== 30 || rsiRange[1] !== 70)) {
+        console.log('Applying RSI filter:', rsiRange);
+        filteredResults = filteredResults.filter((stock: StockData) =>
+          stock.rsi >= rsiRange[0] && stock.rsi <= rsiRange[1]
+        );
+      }
+      
+      // Only apply divergence filter if one is selected
+      if (divergenceFilter && divergenceFilter !== '') {
+        console.log('Applying divergence filter:', divergenceFilter);
+        filteredResults = filteredResults.filter((stock: StockData) =>
+          stock.rsi_divergence === divergenceFilter
+        );
+      }
+      
+      // Only apply volume analysis filter if one is selected
+      if (volumeAnalysisFilter && volumeAnalysisFilter !== '') {
+        console.log('Applying volume analysis filter:', volumeAnalysisFilter);
+        filteredResults = filteredResults.filter((stock: StockData) =>
+          stock.volume_analysis === volumeAnalysisFilter
+        );
+      }
+      
+      // Only apply turnover filter if any ranges are selected
+      if (turnoverFilter.length > 0) {
+        console.log('Applying turnover filter:', turnoverFilter);
+        filteredResults = filteredResults.filter((stock: StockData) => {
+          if (turnoverFilter.includes('100K-1M') && stock.turnover >= 100000 && stock.turnover < 1000000) {
+            return true;
+          }
+          if (turnoverFilter.includes('1M-10M') && stock.turnover >= 1000000 && stock.turnover < 10000000) {
+            return true;
+          }
+          if (turnoverFilter.includes('10M-100M') && stock.turnover >= 10000000 && stock.turnover < 100000000) {
+            return true;
+          }
+          if (turnoverFilter.includes('100M+') && stock.turnover >= 100000000) {
+            return true;
+          }
+          return false;
+        });
+      }
+      
+      // Only apply EMA filters if any are checked
+      if (Object.values(emaFilters).some(value => value)) {
+        console.log('Applying EMA filters:', emaFilters);
+        filteredResults = filteredResults.filter((stock: StockData) => {
+          const price = stock.closing_price;
+          if (emaFilters.ema20 && stock.ema_20 && price < stock.ema_20) {
+            return false;
+          }
+          if (emaFilters.ema50 && stock.ema_50 && price < stock.ema_50) {
+            return false;
+          }
+          if (emaFilters.ema100 && stock.ema_100 && price < stock.ema_100) {
+            return false;
+          }
+          if (emaFilters.ema200 && stock.ema_200 && price < stock.ema_200) {
+            return false;
+          }
+          return true;
+        });
+      }
+
+      console.log('After applying filters:', filteredResults);
+      console.log('Number of results after filtering:', filteredResults.length);
+
+      setDiyFilteredData(getSortedData(filteredResults));
+    } catch (err) {
+      console.error('Error in applyDiyFilters:', err);
+      setError('Failed to fetch filtered data');
+      setDiyFilteredData([]);
+    } finally {
+      setLoading(false);
     }
-    
-    console.log(`Applied DIY filters - found ${results.length} matching stocks`);
-    setDiyFilteredData(getSortedData(results));
   };
 
   const getDivergenceLabel = (div: string) => {
@@ -604,6 +667,18 @@ export default function TechnicalAnalysisPage() {
     if (div.startsWith('Bullish')) return 'success';
     return 'default';
   };
+
+  // Add useEffect to fetch symbols on mount
+  useEffect(() => {
+    fetch('https://cse-maverick-be-platform.onrender.com/symbols')
+      .then(res => res.json())
+      .then(data => {
+        if (data.symbols && Array.isArray(data.symbols)) {
+          setSymbols(data.symbols);
+        }
+      })
+      .catch(err => console.error('Error fetching symbols:', err));
+  }, []);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f7fafc' }}>
@@ -1352,7 +1427,7 @@ export default function TechnicalAnalysisPage() {
                                 <MenuItem value="">
                                   <em>All</em>
                                 </MenuItem>
-                                {Array.from(new Set(stockData.map(s => s.symbol))).map(symbol => (
+                                {symbols.map(symbol => (
                                   <MenuItem key={symbol} value={symbol}>{symbol}</MenuItem>
                                 ))}
                               </Select>
@@ -1591,10 +1666,10 @@ export default function TechnicalAnalysisPage() {
                                 </TableCell>
                                 <TableCell 
                                   sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('rsi')}
+                                  onClick={() => requestSort('volume')}
                                 >
-                                  RSI
-                                  {sortConfig?.key === 'rsi' && (
+                                  Volume
+                                  {sortConfig?.key === 'volume' && (
                                     sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
                                   )}
                                 </TableCell>
@@ -1609,6 +1684,33 @@ export default function TechnicalAnalysisPage() {
                                 </TableCell>
                                 <TableCell 
                                   sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  onClick={() => requestSort('rsi')}
+                                >
+                                  RSI
+                                  {sortConfig?.key === 'rsi' && (
+                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
+                                  )}
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  onClick={() => requestSort('rsi_divergence')}
+                                >
+                                  RSI Divergence
+                                  {sortConfig?.key === 'rsi_divergence' && (
+                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
+                                  )}
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  onClick={() => requestSort('relative_strength')}
+                                >
+                                  Rel. Strength
+                                  {sortConfig?.key === 'relative_strength' && (
+                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
+                                  )}
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
                                   onClick={() => requestSort('volume_analysis')}
                                 >
                                   Volume Analysis
@@ -1618,103 +1720,130 @@ export default function TechnicalAnalysisPage() {
                                 </TableCell>
                                 <TableCell 
                                   sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('relative_strength')}
+                                  onClick={() => requestSort('ema_20')}
                                 >
-                                  RS
-                                  {sortConfig?.key === 'relative_strength' && (
+                                  EMA 20
+                                  {sortConfig?.key === 'ema_20' && (
+                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
+                                  )}
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  onClick={() => requestSort('ema_50')}
+                                >
+                                  EMA 50
+                                  {sortConfig?.key === 'ema_50' && (
+                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
+                                  )}
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  onClick={() => requestSort('ema_100')}
+                                >
+                                  EMA 100
+                                  {sortConfig?.key === 'ema_100' && (
+                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
+                                  )}
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  onClick={() => requestSort('ema_200')}
+                                >
+                                  EMA 200
+                                  {sortConfig?.key === 'ema_200' && (
+                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
+                                  )}
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  onClick={() => requestSort('vol_avg_5d')}
+                                >
+                                  5D Vol Avg
+                                  {sortConfig?.key === 'vol_avg_5d' && (
+                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
+                                  )}
+                                </TableCell>
+                                <TableCell 
+                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
+                                  onClick={() => requestSort('vol_avg_20d')}
+                                >
+                                  20D Vol Avg
+                                  {sortConfig?.key === 'vol_avg_20d' && (
                                     sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
                                   )}
                                 </TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {diyFilteredData.length > 0 ? diyFilteredData.map((stock, index) => (
-                                <TableRow 
-                                  key={`${stock.symbol}-${index}`}
-                                  hover
-                                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                                >
-                                  <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
-                                    {new Date(stock.date).toLocaleDateString()}
-                                  </TableCell>
-                                  <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
-                                    {stock.symbol}
-                                  </TableCell>
-                                  <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
-                                  <TableCell 
-                                    sx={{ 
-                                      color: stock.change_pct >= 0 ? 'success.main' : 'error.main',
-                                      fontWeight: 600
-                                    }}
+                              {diyFilteredData.length > 0 ? (
+                                diyFilteredData.map((stock, index) => (
+                                  <TableRow 
+                                    key={`${stock.symbol}-${index}`}
+                                    hover
+                                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                   >
-                                    {stock.change_pct >= 0 ? '+' : ''}{stock.change_pct.toFixed(2)}%
-                                  </TableCell>
-                                  <TableCell>{stock.rsi.toFixed(1)}</TableCell>
-                                  <TableCell>{stock.turnover > 0 ? `LKR ${stock.turnover.toLocaleString()}` : 'N/A'}</TableCell>
-                                  <TableCell>
-                                    <Chip 
-                                      label={stock.volume_analysis} 
-                                      size="small"
-                                      color={
-                                        stock.volume_analysis === 'High Bullish Momentum' ? 'success' :
-                                        stock.volume_analysis === 'Emerging Bullish Momentum' ? 'primary' : 'default'
-                                      }
-                                      sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
-                                    />
-                                  </TableCell>
-                                  <TableCell 
-                                    sx={{ 
-                                      fontWeight: 600,
-                                      color: stock.relative_strength >= 1 ? 'success.main' : 'inherit'
-                                    }}
-                                  >
-                                    {stock.relative_strength.toFixed(2)}
+                                    <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
+                                      {new Date(stock.date).toLocaleDateString()}
+                                    </TableCell>
+                                    <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
+                                      {stock.symbol}
+                                    </TableCell>
+                                    <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
+                                    <TableCell 
+                                      sx={{ 
+                                        color: stock.change_pct >= 0 ? 'success.main' : 'error.main',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      {stock.change_pct >= 0 ? '+' : ''}{stock.change_pct.toFixed(2)}%
+                                    </TableCell>
+                                    <TableCell>{stock.volume.toLocaleString()}</TableCell>
+                                    <TableCell>{stock.turnover > 0 ? `LKR ${stock.turnover.toLocaleString()}` : 'N/A'}</TableCell>
+                                    <TableCell>{stock.rsi.toFixed(1)}</TableCell>
+                                    <TableCell>
+                                      <Chip 
+                                        label={getDivergenceLabel(stock.rsi_divergence)} 
+                                        size="small"
+                                        color={getDivergenceColor(stock.rsi_divergence)}
+                                        sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
+                                      />
+                                    </TableCell>
+                                    <TableCell 
+                                      sx={{ 
+                                        fontWeight: 600,
+                                        color: stock.relative_strength >= 1 ? 'success.main' : 'inherit'
+                                      }}
+                                    >
+                                      {stock.relative_strength.toFixed(2)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Chip 
+                                        label={stock.volume_analysis} 
+                                        size="small"
+                                        color={
+                                          stock.volume_analysis === 'High Bullish Momentum' ? 'success' :
+                                          stock.volume_analysis === 'Emerging Bullish Momentum' ? 'primary' : 'default'
+                                        }
+                                        sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
+                                      />
+                                    </TableCell>
+                                    <TableCell>{stock.ema_20}</TableCell>
+                                    <TableCell>{stock.ema_50}</TableCell>
+                                    <TableCell>{stock.ema_100}</TableCell>
+                                    <TableCell>{stock.ema_200}</TableCell>
+                                    <TableCell>{stock.vol_avg_5d}</TableCell>
+                                    <TableCell>{stock.vol_avg_20d}</TableCell>
+                                  </TableRow>
+                                ))
+                              ) : (
+                                <TableRow>
+                                  <TableCell colSpan={15} align="center">
+                                    <Typography variant="body2" color="text.secondary">
+                                      No data available. Please select a symbol and date range.
+                                    </Typography>
                                   </TableCell>
                                 </TableRow>
-                              )) : filteredStockDataBySector.slice(0, 10).map((stock, index) => (
-                                <TableRow 
-                                  key={`${stock.symbol}-${index}`}
-                                  hover
-                                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                                >
-                                  <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', minWidth: 90 }}>
-                                    {new Date(stock.date).toLocaleDateString()}
-                                  </TableCell>
-                                  <TableCell sx={{ position: 'sticky', left: 90, zIndex: 1, bgcolor: 'background.paper', minWidth: 120, fontWeight: 600, color: '#2563eb' }}>
-                                    {stock.symbol}
-                                  </TableCell>
-                                  <TableCell>LKR {stock.closing_price > 0 ? stock.closing_price.toFixed(2) : 'N/A'}</TableCell>
-                                  <TableCell 
-                                    sx={{ 
-                                      color: stock.change_pct >= 0 ? 'success.main' : 'error.main',
-                                      fontWeight: 600
-                                    }}
-                                  >
-                                    {stock.change_pct >= 0 ? '+' : ''}{stock.change_pct.toFixed(2)}%
-                                  </TableCell>
-                                  <TableCell>{stock.rsi.toFixed(1)}</TableCell>
-                                  <TableCell>{stock.turnover > 0 ? `LKR ${stock.turnover.toLocaleString()}` : 'N/A'}</TableCell>
-                                  <TableCell>
-                                    <Chip 
-                                      label={stock.volume_analysis} 
-                                      size="small"
-                                      color={
-                                        stock.volume_analysis === 'High Bullish Momentum' ? 'success' :
-                                        stock.volume_analysis === 'Emerging Bullish Momentum' ? 'primary' : 'default'
-                                      }
-                                      sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
-                                    />
-                                  </TableCell>
-                                  <TableCell 
-                                    sx={{ 
-                                      fontWeight: 600,
-                                      color: stock.relative_strength >= 1 ? 'success.main' : 'inherit'
-                                    }}
-                                  >
-                                    {stock.relative_strength.toFixed(2)}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
+                              )}
                             </TableBody>
                           </Table>
                         </TableContainer>
