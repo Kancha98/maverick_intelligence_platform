@@ -300,28 +300,31 @@ export default function TechnicalAnalysisPage() {
         vol_avg_20d: item.vol_avg_20d
       }));
       
+      // Set the main stock data
       setStockData(formattedData);
       setFilteredData(formattedData);
       
-      // Filter data for each tier (following Python logic)
+      // Process data for each tier independently
+      // Tier 1: Bullish Volumes
       const tier1 = formattedData.filter(stock => 
         ['High Bullish Momentum', 'Emerging Bullish Momentum', 'Increase in weekly Volume Activity Detected'].includes(stock.volume_analysis)
       );
+      setTier1Data(tier1);
       
+      // Tier 2: Potential Reversals (RSI Divergence)
       const tier2 = formattedData.filter(stock => 
         stock.rsi_divergence.startsWith('Bullish Divergence') ||
         stock.rsi_divergence.startsWith('Bearish Divergence')
       );
+      setTier2Data(tier2);
       
+      // Tier 3: Top Performers
       const tier3 = formattedData.filter(stock => 
         ['Emerging Bullish Momentum', 'High Bullish Momentum'].includes(stock.volume_analysis) &&
         stock.turnover > 999999 &&
         stock.volume > 9999 &&
         stock.relative_strength >= 1
       );
-      
-      setTier1Data(tier1);
-      setTier2Data(tier2);
       setTier3Data(tier3);
       
     } catch (err) {
@@ -333,10 +336,10 @@ export default function TechnicalAnalysisPage() {
     }
   };
 
-  // Fetch data on component mount
-  // useEffect(() => {
-  //   fetchTechnicalData();
-  // }, []);
+  // Add useEffect to fetch data on component mount
+  useEffect(() => {
+    fetchTechnicalData();
+  }, []);
 
   // Add a refresh function to manually refresh data
   const refreshData = () => {
@@ -361,8 +364,9 @@ export default function TechnicalAnalysisPage() {
       }
       const responseData = await response.json();
       const fetchedData = responseData.data || [];
+      
       // Convert API data to StockData format
-      let formattedData = fetchedData.map((item: any) => ({
+      const formattedData = fetchedData.map((item: any) => ({
         symbol: item.symbol || '',
         date: item.date || '',
         closing_price: typeof item.closing_price === 'number' ? item.closing_price : 0,
@@ -380,31 +384,41 @@ export default function TechnicalAnalysisPage() {
         vol_avg_5d: item.vol_avg_5d,
         vol_avg_20d: item.vol_avg_20d
       }));
+
       // Filter by date range (inclusive)
-      formattedData = formattedData.filter((stock: StockData) => {
+      const dateFilteredData = formattedData.filter((stock: StockData) => {
         if (!stock.date) return false;
         const stockDate = new Date(stock.date);
         return stockDate >= startDate && stockDate <= endDate;
       });
-      setStockData(formattedData);
-      setFilteredData(formattedData);
-      // Filter data for each tier (add type annotation for stock)
-      const tier1 = formattedData.filter((stock: StockData) => 
-        ['High Bullish Momentum', 'Emerging Bullish Momentum', 'Increase in weekly Volume Activity Detected'].includes(stock.volume_analysis)
-      );
-      const tier2 = formattedData.filter((stock: StockData) => 
-        stock.rsi_divergence.startsWith('Bullish Divergence') ||
-        stock.rsi_divergence.startsWith('Bearish Divergence')
-      );
-      const tier3 = formattedData.filter((stock: StockData) => 
-        ['Emerging Bullish Momentum', 'High Bullish Momentum'].includes(stock.volume_analysis) &&
-        stock.turnover > 999999 &&
-        stock.volume > 9999 &&
-        stock.relative_strength >= 1
-      );
+
+      // Set the main stock data
+      setStockData(dateFilteredData);
+      setFilteredData(dateFilteredData);
+
+      // Process data for each tier independently
+      // Tier 1: Bullish Volumes
+      const tier1 = dateFilteredData.filter(function(stock: StockData) { 
+        return ['High Bullish Momentum', 'Emerging Bullish Momentum', 'Increase in weekly Volume Activity Detected'].includes(stock.volume_analysis);
+      });
       setTier1Data(tier1);
+
+      // Tier 2: Potential Reversals (RSI Divergence)
+      const tier2 = dateFilteredData.filter(function(stock: StockData) { 
+        return stock.rsi_divergence.startsWith('Bullish Divergence') ||
+               stock.rsi_divergence.startsWith('Bearish Divergence');
+      });
       setTier2Data(tier2);
+
+      // Tier 3: Top Performers
+      const tier3 = dateFilteredData.filter(function(stock: StockData) { 
+        return ['Emerging Bullish Momentum', 'High Bullish Momentum'].includes(stock.volume_analysis) &&
+               stock.turnover > 999999 &&
+               stock.volume > 9999 &&
+               stock.relative_strength >= 1;
+      });
       setTier3Data(tier3);
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch technical analysis data with date range filter';
       setError(errorMessage);
@@ -515,8 +529,8 @@ export default function TechnicalAnalysisPage() {
 
   // Add a function to apply DIY filters
   const applyDiyFilters = async () => {
-    // Only fetch if symbol and date range are provided
-    if (!symbolFilter || !startDate || !endDate) {
+    // Only fetch if date range is provided
+    if (!startDate || !endDate) {
       setDiyFilteredData([]);
       return;
     }
@@ -526,12 +540,16 @@ export default function TechnicalAnalysisPage() {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       console.log('Fetching data with params:', {
-        symbol: symbolFilter,
         start_date: startDateStr,
         end_date: endDateStr
       });
       
-      const response = await fetch(`https://cse-maverick-be-platform.onrender.com/technical-analysis?symbol=${encodeURIComponent(symbolFilter)}&start_date=${startDateStr}&end_date=${endDateStr}`, {
+      // If symbol filter is empty or "All", fetch data for all symbols
+      const url = symbolFilter 
+        ? `https://cse-maverick-be-platform.onrender.com/technical-analysis?symbol=${encodeURIComponent(symbolFilter)}&start_date=${startDateStr}&end_date=${endDateStr}`
+        : `https://cse-maverick-be-platform.onrender.com/technical-analysis?start_date=${startDateStr}&end_date=${endDateStr}`;
+      
+      const response = await fetch(url, {
         cache: 'no-store',
         headers: { 'Accept': 'application/json' }
       });
@@ -1463,7 +1481,8 @@ export default function TechnicalAnalysisPage() {
                                 </MenuItem>
                                 <MenuItem value="High Bullish Momentum">High Bullish Momentum</MenuItem>
                                 <MenuItem value="Emerging Bullish Momentum">Emerging Bullish Momentum</MenuItem>
-                                <MenuItem value="Increase in weekly Volume Activity Detected">Increase in Weekly Volume</MenuItem>
+                                <MenuItem value="Increase in Weekly Volume Activity Detected">Increase in Weekly Volume Activity Detected</MenuItem>
+                                <MenuItem value="Suspicious Volume Spike (Possible Noise)">Suspicious Volume Spike (Possible Noise)</MenuItem>
                               </Select>
                             </FormControl>
                           </CardContent>
@@ -1709,69 +1728,6 @@ export default function TechnicalAnalysisPage() {
                                     sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
                                   )}
                                 </TableCell>
-                                <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('volume_analysis')}
-                                >
-                                  Volume Analysis
-                                  {sortConfig?.key === 'volume_analysis' && (
-                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
-                                  )}
-                                </TableCell>
-                                <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('ema_20')}
-                                >
-                                  EMA 20
-                                  {sortConfig?.key === 'ema_20' && (
-                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
-                                  )}
-                                </TableCell>
-                                <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('ema_50')}
-                                >
-                                  EMA 50
-                                  {sortConfig?.key === 'ema_50' && (
-                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
-                                  )}
-                                </TableCell>
-                                <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('ema_100')}
-                                >
-                                  EMA 100
-                                  {sortConfig?.key === 'ema_100' && (
-                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
-                                  )}
-                                </TableCell>
-                                <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('ema_200')}
-                                >
-                                  EMA 200
-                                  {sortConfig?.key === 'ema_200' && (
-                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
-                                  )}
-                                </TableCell>
-                                <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('vol_avg_5d')}
-                                >
-                                  5D Vol Avg
-                                  {sortConfig?.key === 'vol_avg_5d' && (
-                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
-                                  )}
-                                </TableCell>
-                                <TableCell 
-                                  sx={{ fontWeight: 700, cursor: 'pointer' }}
-                                  onClick={() => requestSort('vol_avg_20d')}
-                                >
-                                  20D Vol Avg
-                                  {sortConfig?.key === 'vol_avg_20d' && (
-                                    sortConfig.direction === 'ascending' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />
-                                  )}
-                                </TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -1827,17 +1783,11 @@ export default function TechnicalAnalysisPage() {
                                         sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: 24, sm: 'auto' } }}
                                       />
                                     </TableCell>
-                                    <TableCell>{stock.ema_20}</TableCell>
-                                    <TableCell>{stock.ema_50}</TableCell>
-                                    <TableCell>{stock.ema_100}</TableCell>
-                                    <TableCell>{stock.ema_200}</TableCell>
-                                    <TableCell>{stock.vol_avg_5d}</TableCell>
-                                    <TableCell>{stock.vol_avg_20d}</TableCell>
                                   </TableRow>
                                 ))
                               ) : (
                                 <TableRow>
-                                  <TableCell colSpan={15} align="center">
+                                  <TableCell colSpan={9} align="center">
                                     <Typography variant="body2" color="text.secondary">
                                       No data available. Please select a symbol and date range.
                                     </Typography>
