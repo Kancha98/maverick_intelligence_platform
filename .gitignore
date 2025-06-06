@@ -1,0 +1,4 @@
+frontend-next/migrations/add_watchlist_column.sql
+frontend-next/pages/api/auth/\[...nextauth\].ts
+frontend-next/app/api/cse-insights/symbols/route.ts
+frontend-next/app/api/cse-insights/symbols/route.ts
