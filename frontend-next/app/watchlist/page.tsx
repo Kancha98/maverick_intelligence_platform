@@ -32,6 +32,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import Sidebar from '../../components/Sidebar';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -52,6 +53,8 @@ interface TechnicalData {
   rsi_divergence: string;
   relative_strength: number;
   volume_analysis: string;
+  volume?: number;
+  turnover?: number;
 }
 
 interface TechnicalDataMap {
@@ -80,6 +83,7 @@ export default function PositionPage() {
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [technicalData, setTechnicalData] = useState<TechnicalDataMap>({});
   const [loadingTechnical, setLoadingTechnical] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Load positions from localStorage on component mount
   useEffect(() => {
@@ -124,38 +128,25 @@ export default function PositionPage() {
   const fetchTechnicalData = async () => {
     setLoadingTechnical(true);
     try {
-      const today = new Date();
-      const startDate = new Date();
-      startDate.setDate(today.getDate() - 14); // Get data for last 14 days
-      
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = today.toISOString().split('T')[0];
-      
       const symbols = positions.map(p => p.symbol);
-      const response = await fetch(
-        `https://cse-maverick-be-platform.onrender.com/technical-analysis?start_date=${startDateStr}&end_date=${endDateStr}&symbol=${symbols.join(',')}`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch technical data');
-      }
-      
-      const data = await response.json();
-      
-      // Process the data to get the latest technical indicators for each symbol
       const latestTechnicalData: TechnicalDataMap = {};
-      symbols.forEach(symbol => {
-        const symbolData = data.data?.find((item: any) => item.symbol === symbol);
-        if (symbolData) {
+      await Promise.all(symbols.map(async (symbol) => {
+        const response = await fetch(`https://cse-maverick-be-platform.onrender.com/technical-analysis?symbol=${symbol}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.data && data.data.length > 0) {
+          // Find the entry with the latest date
+          const latest = data.data.reduce((a: any, b: any) => new Date(a.date) > new Date(b.date) ? a : b);
           latestTechnicalData[symbol] = {
-            rsi: symbolData.rsi || 50,
-            rsi_divergence: symbolData.rsi_divergence || 'None',
-            relative_strength: symbolData.relative_strength || 1,
-            volume_analysis: symbolData.volume_analysis || 'None'
+            rsi: latest.rsi || 50,
+            rsi_divergence: latest.rsi_divergence || 'None',
+            relative_strength: latest.relative_strength || 1,
+            volume_analysis: latest.volume_analysis || 'None',
+            volume: latest.volume || null,
+            turnover: latest.turnover || null,
           };
         }
-      });
-      
+      }));
       setTechnicalData(latestTechnicalData);
     } catch (err) {
       console.error('Error fetching technical data:', err);
@@ -278,6 +269,15 @@ export default function PositionPage() {
     return 'default';
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchLatestPrices(),
+      fetchTechnicalData()
+    ]);
+    setRefreshing(false);
+  };
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f7fafc' }}>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} isDesktop={isDesktop} />
@@ -297,6 +297,16 @@ export default function PositionPage() {
                   sx={{ mr: 2 }}
                 >
                   Add Position
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={handleRefresh}
+                  sx={{ mr: 2 }}
+                  disabled={refreshing}
+                >
+                  {refreshing ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
+                  Refresh
                 </Button>
                 <Button
                   variant="outlined"
@@ -320,6 +330,8 @@ export default function PositionPage() {
                     <TableCell align="right"><Typography fontWeight={600}>Total Value</Typography></TableCell>
                     <TableCell align="right"><Typography fontWeight={600}>P/L</Typography></TableCell>
                     <TableCell align="right"><Typography fontWeight={600}>Gain %</Typography></TableCell>
+                    <TableCell align="right"><Typography fontWeight={600}>Volume</Typography></TableCell>
+                    <TableCell align="right"><Typography fontWeight={600}>Turnover</Typography></TableCell>
                     <TableCell align="right"><Typography fontWeight={600}>RSI</Typography></TableCell>
                     <TableCell align="right"><Typography fontWeight={600}>RS</Typography></TableCell>
                     <TableCell align="center"><Typography fontWeight={600}>Divergence</Typography></TableCell>
@@ -340,12 +352,12 @@ export default function PositionPage() {
                           <Typography fontWeight={500}>{item.symbol}</Typography>
                         </TableCell>
                         <TableCell align="right">{item.quantity.toLocaleString()}</TableCell>
-                        <TableCell align="right">${item.besPrice.toFixed(2)}</TableCell>
+                        <TableCell align="right">LKR {item.besPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell align="right">
                           {loadingPrices ? (
                             <CircularProgress size={20} />
                           ) : latestPrice !== undefined ? (
-                            `$${latestPrice?.toFixed(2) || '-'}`
+                            `LKR ${latestPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                           ) : (
                             '-'
                           )}
@@ -369,6 +381,24 @@ export default function PositionPage() {
                             >
                               {((profitLoss / (item.quantity * item.besPrice)) * 100).toFixed(2)}%
                             </Typography>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          {loadingTechnical ? (
+                            <CircularProgress size={20} />
+                          ) : techData && techData.volume !== undefined && techData.volume !== null ? (
+                            techData.volume.toLocaleString()
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          {loadingTechnical ? (
+                            <CircularProgress size={20} />
+                          ) : techData && techData.turnover !== undefined && techData.turnover !== null ? (
+                            `LKR ${techData.turnover.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                           ) : (
                             '-'
                           )}
@@ -444,7 +474,7 @@ export default function PositionPage() {
                   })}
                   {positions.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+                      <TableCell colSpan={14} align="center" sx={{ py: 3 }}>
                         <Typography color="text.secondary">
                           No positions added yet. Click "Add Position" to get started.
                         </Typography>
