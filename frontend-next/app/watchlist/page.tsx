@@ -107,6 +107,21 @@ export default function PositionPage() {
     }
   }, [positions]);
 
+  useEffect(() => {
+    const reload = () => {
+      const savedPositions = localStorage.getItem('positions');
+      if (savedPositions) {
+        setPositions(JSON.parse(savedPositions));
+      }
+    };
+    window.addEventListener('positions-updated', reload);
+    window.addEventListener('focus', reload);
+    return () => {
+      window.removeEventListener('positions-updated', reload);
+      window.removeEventListener('focus', reload);
+    };
+  }, []);
+
   const fetchLatestPrices = async () => {
     setLoadingPrices(true);
     try {

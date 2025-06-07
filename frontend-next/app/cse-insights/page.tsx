@@ -36,6 +36,8 @@ import {
   DialogActions,
   // Removed ArrowUpwardIcon,
   // Removed ArrowDownwardIcon,
+  TextField,
+  Snackbar,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -54,6 +56,7 @@ import { green } from '@mui/material/colors';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import AddIcon from '@mui/icons-material/Add';
 
 // Style definitions
 const CardStyles = {
@@ -218,6 +221,12 @@ export default function CSEInsightsPage() {
   const [appliedSectors, setAppliedSectors] = useState<string[]>([]);
   const [ohlcvCache, setOhlcvCache] = useState<Record<string, any[]>>({});
   const [pendingOhlcvRequestsByDate, setPendingOhlcvRequestsByDate] = useState<Record<string, Set<string>>>({});
+  const [addPositionDialogOpen, setAddPositionDialogOpen] = useState(false);
+  const [newQuantity, setNewQuantity] = useState('');
+  const [newBesPrice, setNewBesPrice] = useState('');
+  const [newPriceAlert, setNewPriceAlert] = useState('');
+  const [positionError, setPositionError] = useState('');
+  const [positionSuccess, setPositionSuccess] = useState('');
 
   // Add refresh function
   const refreshData = async () => {
@@ -582,6 +591,51 @@ export default function CSEInsightsPage() {
     setOhlcvCache((prev) => ({ ...prev, ...allResults }));
   };
 
+  const handleAddPosition = () => {
+    if (!newQuantity.trim() || isNaN(Number(newQuantity)) || Number(newQuantity) <= 0) {
+      setPositionError('Please enter a valid quantity');
+      return;
+    }
+
+    if (!newBesPrice.trim() || isNaN(Number(newBesPrice)) || Number(newBesPrice) <= 0) {
+      setPositionError('Please enter a valid BES price');
+      return;
+    }
+
+    // Get existing positions from localStorage
+    const savedPositions = localStorage.getItem('positions');
+    const positions = savedPositions ? JSON.parse(savedPositions) : [];
+
+    // Check if symbol already exists in positions
+    if (positions.some((item: any) => item.symbol === selectedSymbol)) {
+      setPositionError('Symbol already in positions');
+      return;
+    }
+
+    const newItem = {
+      symbol: selectedSymbol.trim().toUpperCase(),
+      quantity: Number(newQuantity),
+      besPrice: Number(newBesPrice),
+      priceAlert: newPriceAlert ? parseFloat(newPriceAlert) : undefined
+    };
+
+    // Save updated positions to localStorage
+    localStorage.setItem('positions', JSON.stringify([...positions, newItem]));
+    window.dispatchEvent(new Event('positions-updated'));
+
+    // Reset form and close dialog
+    setNewQuantity('');
+    setNewBesPrice('');
+    setNewPriceAlert('');
+    setAddPositionDialogOpen(false);
+    setPositionSuccess('Position added successfully');
+  };
+
+  const handleOpenAddPosition = (symbol: string) => {
+    setSelectedSymbol(symbol);
+    setAddPositionDialogOpen(true);
+  };
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} isDesktop={isDesktop} />
@@ -853,14 +907,24 @@ export default function CSEInsightsPage() {
                                   sx={CardStyles}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 0 }}>
                                   {stock.symbol}
-                                  {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                        <MobileTooltip title={stock.rsi_divergence}>
-                                      <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                        </MobileTooltip>
-                                  )}
                                 </Typography>
+                                <Tooltip title="Add to My Positions" placement="top">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleOpenAddPosition(stock.symbol)}
+                                    sx={{ ml: 1 }}
+                                    aria-label="Add to Positions"
+                                  >
+                                    <AddIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                  <MobileTooltip title={stock.rsi_divergence}>
+                                    <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                  </MobileTooltip>
+                                )}
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <MobileTooltip title="Number of times this stock was detected in the selected period. If multiple detections happen, that means it's more likely to give better capital gains.">
@@ -1083,14 +1147,24 @@ export default function CSEInsightsPage() {
                                   sx={CardStyles}
                                 >
                                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 0 }}>
                                       {stock.symbol}
-                                      {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                        <MobileTooltip title={stock.rsi_divergence}>
-                                          <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                        </MobileTooltip>
-                                      )}
                                     </Typography>
+                                    <Tooltip title="Add to My Positions" placement="top">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleOpenAddPosition(stock.symbol)}
+                                        sx={{ ml: 1 }}
+                                        aria-label="Add to Positions"
+                                      >
+                                        <AddIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                    {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                      <MobileTooltip title={stock.rsi_divergence}>
+                                        <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                      </MobileTooltip>
+                                    )}
                                   </Box>
                                   <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
@@ -1288,14 +1362,24 @@ export default function CSEInsightsPage() {
                                   sx={CardStyles}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 0 }}>
                                   {stock.symbol}
-                                  {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                        <MobileTooltip title={stock.rsi_divergence}>
-                                      <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                        </MobileTooltip>
-                                  )}
                                 </Typography>
+                                <Tooltip title="Add to My Positions" placement="top">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleOpenAddPosition(stock.symbol)}
+                                    sx={{ ml: 1 }}
+                                    aria-label="Add to Positions"
+                                  >
+                                    <AddIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                  <MobileTooltip title={stock.rsi_divergence}>
+                                    <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                  </MobileTooltip>
+                                )}
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
@@ -1493,14 +1577,24 @@ export default function CSEInsightsPage() {
                                   sx={CardStyles}
                                 >
                                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 0 }}>
                                       {stock.symbol}
-                                      {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                        <MobileTooltip title={stock.rsi_divergence}>
-                                          <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                        </MobileTooltip>
-                                      )}
                                     </Typography>
+                                    <Tooltip title="Add to My Positions" placement="top">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleOpenAddPosition(stock.symbol)}
+                                        sx={{ ml: 1 }}
+                                        aria-label="Add to Positions"
+                                      >
+                                        <AddIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                    {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                      <MobileTooltip title={stock.rsi_divergence}>
+                                        <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                      </MobileTooltip>
+                                    )}
                                   </Box>
                                   <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
@@ -1727,14 +1821,24 @@ export default function CSEInsightsPage() {
                                   sx={CardStyles}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 0 }}>
                                   {stock.symbol}
-                                  {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                        <MobileTooltip title={stock.rsi_divergence}>
-                                      <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                        </MobileTooltip>
-                                  )}
                                 </Typography>
+                                <Tooltip title="Add to My Positions" placement="top">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleOpenAddPosition(stock.symbol)}
+                                    sx={{ ml: 1 }}
+                                    aria-label="Add to Positions"
+                                  >
+                                    <AddIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                  <MobileTooltip title={stock.rsi_divergence}>
+                                    <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                  </MobileTooltip>
+                                )}
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
@@ -1932,14 +2036,24 @@ export default function CSEInsightsPage() {
                                   sx={CardStyles}
                                 >
                                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                    <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 0 }}>
                                       {stock.symbol}
-                                      {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                        <MobileTooltip title={stock.rsi_divergence}>
-                                          <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                        </MobileTooltip>
-                                      )}
                                     </Typography>
+                                    <Tooltip title="Add to My Positions" placement="top">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleOpenAddPosition(stock.symbol)}
+                                        sx={{ ml: 1 }}
+                                        aria-label="Add to Positions"
+                                      >
+                                        <AddIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                    {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                      <MobileTooltip title={stock.rsi_divergence}>
+                                        <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                      </MobileTooltip>
+                                    )}
                                   </Box>
                                   <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
@@ -2137,14 +2251,24 @@ export default function CSEInsightsPage() {
                                   sx={CardStyles}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 1 }}>
+                                <Typography variant="h6" fontWeight={900} sx={{ flexGrow: 0 }}>
                                   {stock.symbol}
-                                  {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
-                                        <MobileTooltip title={stock.rsi_divergence}>
-                                      <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
-                                        </MobileTooltip>
-                                  )}
                                 </Typography>
+                                <Tooltip title="Add to My Positions" placement="top">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleOpenAddPosition(stock.symbol)}
+                                    sx={{ ml: 1 }}
+                                    aria-label="Add to Positions"
+                                  >
+                                    <AddIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                {stock.rsi_divergence && stock.rsi_divergence.toLowerCase().includes('bullish divergence') && (
+                                  <MobileTooltip title={stock.rsi_divergence}>
+                                    <img src="/bull.png" alt="Bullish Divergence" style={{ width: 24, height: 24, marginLeft: 6, verticalAlign: 'middle' }} />
+                                  </MobileTooltip>
+                                )}
                               </Box>
                               <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <MobileTooltip title="More detections usually mean more upside potential.But 3+ may mean the stock has already moved—be cautious.">
@@ -2361,6 +2485,68 @@ export default function CSEInsightsPage() {
           </Alert>
         )}
       </Box>
+      {/* Add Position Dialog */}
+      <Dialog open={addPositionDialogOpen} onClose={() => setAddPositionDialogOpen(false)}>
+        <DialogTitle>Add to Positions</DialogTitle>
+        <DialogContent>
+          <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+            Symbol: {selectedSymbol}
+          </Typography>
+          <TextField
+            fullWidth
+            label="Quantity"
+            type="number"
+            value={newQuantity}
+            onChange={(e) => setNewQuantity(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="BES Price"
+            type="number"
+            value={newBesPrice}
+            onChange={(e) => setNewBesPrice(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="Price Alert (optional)"
+            type="number"
+            value={newPriceAlert}
+            onChange={(e) => setNewPriceAlert(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddPositionDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleAddPosition}
+            variant="contained"
+          >
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Position Notifications */}
+      <Snackbar
+        open={!!positionError}
+        autoHideDuration={6000}
+        onClose={() => setPositionError('')}
+      >
+        <Alert severity="error" onClose={() => setPositionError('')}>
+          {positionError}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={!!positionSuccess}
+        autoHideDuration={6000}
+        onClose={() => setPositionSuccess('')}
+      >
+        <Alert severity="success" onClose={() => setPositionSuccess('')}>
+          {positionSuccess}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
