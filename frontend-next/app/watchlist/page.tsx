@@ -130,26 +130,63 @@ export default function PositionPage() {
     try {
       const symbols = positions.map(p => p.symbol);
       const latestTechnicalData: TechnicalDataMap = {};
-      await Promise.all(symbols.map(async (symbol) => {
-        const response = await fetch(`https://cse-maverick-be-platform.onrender.com/technical-analysis?symbol=${symbol}`);
-        if (!response.ok) return;
-        const data = await response.json();
-        if (data.data && data.data.length > 0) {
-          // Find the entry with the latest date
-          const latest = data.data.reduce((a: any, b: any) => new Date(a.date) > new Date(b.date) ? a : b);
+      
+      // Process each symbol sequentially
+      for (const symbol of symbols) {
+        try {
+          console.log(`Fetching technical data for ${symbol}`); // Debug log
+          const response = await fetch(`https://cse-maverick-be-platform.onrender.com/api/latest-technical-analysis/${symbol}`);
+          
+          if (!response.ok) {
+            console.error(`Failed to fetch technical data for ${symbol}: ${response.status}`);
+            continue;
+          }
+          
+          const data = await response.json();
+          console.log(`Received data for ${symbol}:`, data); // Debug log
+          
+          if (data.data) {
+            // Create a new object for each symbol's data
+            latestTechnicalData[symbol] = {
+              rsi: data.data.rsi ?? 50,
+              rsi_divergence: data.data.rsi_divergence ?? 'None',
+              relative_strength: data.data.relative_strength ?? 1,
+              volume_analysis: data.data.volume_analysis ?? 'None',
+              volume: data.data.volume ?? undefined,
+              turnover: data.data.turnover ?? undefined,
+            };
+            
+            console.log(`Processed data for ${symbol}:`, latestTechnicalData[symbol]); // Debug log
+          } else {
+            console.warn(`No data available for ${symbol}`);
+            // Set default values for this symbol
+            latestTechnicalData[symbol] = {
+              rsi: 50,
+              rsi_divergence: 'None',
+              relative_strength: 1,
+              volume_analysis: 'None',
+              volume: undefined,
+              turnover: undefined,
+            };
+          }
+        } catch (err) {
+          console.error(`Error fetching technical data for ${symbol}:`, err);
+          // Set default values for this symbol in case of error
           latestTechnicalData[symbol] = {
-            rsi: latest.rsi || 50,
-            rsi_divergence: latest.rsi_divergence || 'None',
-            relative_strength: latest.relative_strength || 1,
-            volume_analysis: latest.volume_analysis || 'None',
-            volume: latest.volume || null,
-            turnover: latest.turnover || null,
+            rsi: 50,
+            rsi_divergence: 'None',
+            relative_strength: 1,
+            volume_analysis: 'None',
+            volume: undefined,
+            turnover: undefined,
           };
         }
-      }));
+      }
+      
+      console.log('Final technical data:', latestTechnicalData); // Debug log
       setTechnicalData(latestTechnicalData);
     } catch (err) {
-      console.error('Error fetching technical data:', err);
+      console.error('Error in fetchTechnicalData:', err);
       setError('Failed to fetch technical data');
     } finally {
       setLoadingTechnical(false);
