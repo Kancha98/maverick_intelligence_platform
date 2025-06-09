@@ -49,6 +49,12 @@ interface TradeData {
   timestamp: string;
 }
 
+interface AggregatedTradeData {
+  price: number;
+  quantity: number;
+  no_of_trades: number;
+}
+
 interface TradeSummary {
   date: string;
   latest_net_change: number;
@@ -570,11 +576,70 @@ export default function VolumeProfilePage() {
     return ((buyVolume / totalVolume) * 100).toFixed(2);
   };
 
-  const chartData = tradeData.map(trade => ({
-    price: parseFloat(trade.price),
-    quantity: trade.quantity,
-    netChange: parseFloat(trade.net_change)
-  })).sort((a, b) => a.price - b.price);
+  // For sortable table (Till Date tab)
+  const sortedTradeData = React.useMemo(() => {
+    if (selectedTab !== 1) return tradeData;
+    
+    // Aggregate data by price level
+    const aggregatedData = tradeData.reduce<Record<number, AggregatedTradeData>>((acc, trade) => {
+      const price = parseFloat(trade.price);
+      if (!acc[price]) {
+        acc[price] = {
+          price: price,
+          quantity: 0,
+          no_of_trades: 0
+        };
+      }
+      acc[price].quantity += trade.quantity;
+      acc[price].no_of_trades += trade.no_of_trades;
+      return acc;
+    }, {});
+
+    // Convert to array and sort
+    const sorted = Object.values(aggregatedData).sort((a: AggregatedTradeData, b: AggregatedTradeData) => {
+      let aValue: number, bValue: number;
+      switch (sortConfig.key) {
+        case 'price':
+          aValue = a.price;
+          bValue = b.price;
+          break;
+        case 'quantity':
+          aValue = a.quantity;
+          bValue = b.quantity;
+          break;
+        case 'no_of_trades':
+          aValue = a.no_of_trades;
+          bValue = b.no_of_trades;
+          break;
+        default:
+          aValue = 0;
+          bValue = 0;
+      }
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [tradeData, sortConfig, selectedTab]);
+
+  // Chart data based on selected tab
+  const chartData = React.useMemo(() => {
+    if (selectedTab === 1) {
+      // Use the aggregated data for Till Date view
+      return (sortedTradeData as AggregatedTradeData[]).map(trade => ({
+        price: trade.price,
+        quantity: trade.quantity,
+        netChange: 0 // Not applicable for Till Date view
+      }));
+    } else {
+      // Use original data for Latest Day view
+      return tradeData.map(trade => ({
+        price: parseFloat(trade.price),
+        quantity: trade.quantity,
+        netChange: parseFloat(trade.net_change)
+      })).sort((a, b) => a.price - b.price);
+    }
+  }, [tradeData, sortedTradeData, selectedTab]);
 
   const getBarColor = (value: number) => {
     // Check if this price level is a support or resistance level
@@ -587,7 +652,7 @@ export default function VolumeProfilePage() {
     if (isResistanceLevel) {
       return '#991b1b'; // Dark red for resistance levels
     }
-    return '#404040'; // Charcoal grey for other levels
+    return selectedTab === 1 ? '#64748b' : '#404040'; // Use neutral color for Till Date view
   };
 
   const formatYAxis = (value: number) => {
@@ -610,36 +675,6 @@ export default function VolumeProfilePage() {
       todaysOhlc = ohlcvData[ohlcvData.length - 1];
     }
   }
-
-  // For sortable table (Till Date tab)
-  const sortedTradeData = React.useMemo(() => {
-    if (selectedTab !== 1) return tradeData;
-    const sorted = [...tradeData];
-    sorted.sort((a, b) => {
-      let aValue: number, bValue: number;
-      switch (sortConfig.key) {
-        case 'price':
-          aValue = parseFloat(a.price);
-          bValue = parseFloat(b.price);
-          break;
-        case 'quantity':
-          aValue = a.quantity;
-          bValue = b.quantity;
-          break;
-        case 'no_of_trades':
-          aValue = a.no_of_trades;
-          bValue = b.no_of_trades;
-          break;
-        default:
-          aValue = 0;
-          bValue = 0;
-      }
-      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  }, [tradeData, sortConfig, selectedTab]);
 
   // For time period display (prefer summary.date_range for Till Date tab)
   let periodStart = '';
@@ -1037,23 +1072,47 @@ export default function VolumeProfilePage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(selectedTab === 1 ? sortedTradeData : tradeData).map((trade, index) => (
-                    <TableRow 
-                      key={index}
-                      hover
-                      sx={{ 
-                        '&:last-child td, &:last-child th': { border: 0 },
-                        transition: 'background-color 0.2s',
-                        '&:hover': {
-                          bgcolor: '#f8fafc'
-                        }
-                      }}
-                    >
-                      <TableCell>LKR {parseFloat(trade.price).toFixed(2)}</TableCell>
-                      <TableCell>{trade.quantity.toLocaleString()}</TableCell>
-                      <TableCell>{trade.no_of_trades.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
+                  {(selectedTab === 1 ? sortedTradeData : tradeData).map((trade, index) => {
+                    if (selectedTab === 1) {
+                      const aggregatedTrade = trade as AggregatedTradeData;
+                      return (
+                        <TableRow 
+                          key={index}
+                          hover
+                          sx={{ 
+                            '&:last-child td, &:last-child th': { border: 0 },
+                            transition: 'background-color 0.2s',
+                            '&:hover': {
+                              bgcolor: '#f8fafc'
+                            }
+                          }}
+                        >
+                          <TableCell>LKR {aggregatedTrade.price.toFixed(2)}</TableCell>
+                          <TableCell>{aggregatedTrade.quantity.toLocaleString()}</TableCell>
+                          <TableCell>{aggregatedTrade.no_of_trades.toLocaleString()}</TableCell>
+                        </TableRow>
+                      );
+                    } else {
+                      const regularTrade = trade as TradeData;
+                      return (
+                        <TableRow 
+                          key={index}
+                          hover
+                          sx={{ 
+                            '&:last-child td, &:last-child th': { border: 0 },
+                            transition: 'background-color 0.2s',
+                            '&:hover': {
+                              bgcolor: '#f8fafc'
+                            }
+                          }}
+                        >
+                          <TableCell>LKR {parseFloat(regularTrade.price).toFixed(2)}</TableCell>
+                          <TableCell>{regularTrade.quantity.toLocaleString()}</TableCell>
+                          <TableCell>{regularTrade.no_of_trades.toLocaleString()}</TableCell>
+                        </TableRow>
+                      );
+                    }
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
