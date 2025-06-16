@@ -64,6 +64,13 @@ interface StockRow {
   [key: string]: any;
 }
 
+// Add this new type for Leaders and Laggards
+interface LeadersStockRow extends StockRow {
+  startPrice?: number;
+  endPrice?: number;
+  gainLoss?: number | null;
+}
+
 interface AggregateSector {
   sector: string;
   avgTurnover: number | null;
@@ -85,12 +92,28 @@ interface SectorHistory {
   total_symbols: number;
 }
 
-interface SectorGain {
+interface SectorMomentumRow {
   sector: string;
-  gain3: number | null;
-  gain5: number | null;
-  gain10: number | null;
+  weekly_momentum: number;
+  monthly_momentum: number;
+  three_month_momentum: number;
+  date: string;
+  // add any other fields you use
+}
+
+// Define a type for the API response row
+interface SectorDailyHistoryRow {
+  bullish_symbols: number;
+  closing_price: number;
+  date: string;
+  monthly_momentum: number;
+  sector: string;
+  three_month_momentum: number;
   total_symbols: number;
+  turnover: number;
+  volume: number;
+  volume_analysis: string;
+  weekly_momentum: number;
 }
 
 function formatNumber(num: number | null | undefined): string {
@@ -108,38 +131,6 @@ const fetchSectorHistory = async (): Promise<SectorHistory[]> => {
     volume: item.volume,
     total_symbols: item.total_symbols,
   }));
-};
-
-const calculateGains = (history: SectorHistory[]): SectorGain[] => {
-  // Group by sector
-  const sectorMap: Record<string, SectorHistory[]> = {};
-  history.forEach((item) => {
-    if (!sectorMap[item.sector]) sectorMap[item.sector] = [];
-    sectorMap[item.sector].push(item);
-  });
-  // Calculate gains
-  const gains: SectorGain[] = Object.entries(sectorMap).map(([sector, records]) => {
-    // Sort by date ascending
-    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
-    const latest = sorted[sorted.length - 1];
-    const getNthAgo = (n: number) => sorted[sorted.length - 1 - n];
-    const gain = (n: number): number | null => {
-      const nth = getNthAgo(n);
-      if (!latest || !nth || nth.volume === 0) return null;
-      return (latest.volume - nth.volume) / nth.volume;
-    };
-    return {
-      sector,
-      gain3: sorted.length > 3 ? gain(3) : null,
-      gain5: sorted.length > 5 ? gain(5) : null,
-      gain10: sorted.length > 10 ? gain(10) : null,
-      total_symbols: latest.total_symbols,
-    };
-  });
-  // Filter out sectors with total_symbols < 5
-  const filtered = gains.filter(g => g.total_symbols >= 5);
-  // Sort alphabetically
-  return filtered.sort((a, b) => a.sector.localeCompare(b.sector));
 };
 
 // Helper: median
@@ -184,9 +175,9 @@ export default function SectorAnalysisPage() {
   // Add state for momentum
   const [momentum, setMomentum] = useState<any[]>([]);
 
-  // Add sort state
-  const [orderBy, setOrderBy] = useState<'sector' | 'gain3' | 'gain5' | 'gain10'>('sector');
-  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+  // Add sort state for momentum table
+  const [momentumOrderBy, setMomentumOrderBy] = useState<'sector' | 'weekly_momentum' | 'monthly_momentum' | 'three_month_momentum'>('sector');
+  const [momentumOrder, setMomentumOrder] = useState<'asc' | 'desc'>('asc');
 
   // Add state for tab and selected sectors for chart
   const [selectedTrendSectors, setSelectedTrendSectors] = useState<string[]>([]);
@@ -203,12 +194,33 @@ export default function SectorAnalysisPage() {
     triggerOnce: false
   });
 
+  // Add state for Leaders and Laggards tab
+  const [selectedLeadersSector, setSelectedLeadersSector] = useState<string>('');
+  const [leadersStartDate, setLeadersStartDate] = useState<Date | null>(null);
+  const [leadersEndDate, setLeadersEndDate] = useState<Date | null>(null);
+  const [leadersStockData, setLeadersStockData] = useState<LeadersStockRow[]>([]);
+
+  // Add sorting state for Leaders and Laggards table
+  const [leadersOrderBy, setLeadersOrderBy] = useState<'symbol' | 'startPrice' | 'endPrice' | 'gainLoss'>('symbol');
+  const [leadersOrder, setLeadersOrder] = useState<'asc' | 'desc'>('asc');
+
   // Fetch sectors on mount
   useEffect(() => {
-    fetch("/api/sectors")
+    fetch('https://cse-maverick-be-platform.onrender.com/sectors')
       .then(res => res.json())
-      .then(data => setSectors(data.sectors || []))
-      .catch(() => setSectors([]));
+      .then(data => {
+        // Map the sectors data to include both sector name and symbols
+        const sectorsData = data.sectors.map((s: any) => ({
+          sector: s.sector,
+          codes: s.symbols || [] // Make sure we're using the symbols array
+        }));
+        setSectors(sectorsData);
+        console.log('Sectors data:', sectorsData); // Debug log
+      })
+      .catch(err => {
+        console.error('Error fetching sectors:', err);
+        setSectors([]);
+      });
   }, []);
 
   // Fetch stock data for the selected date on mount and when date changes
@@ -247,23 +259,26 @@ export default function SectorAnalysisPage() {
     if (tab !== 0) return;
     setLoading(true);
     setError(null);
-    let url = '/api/sector-trends';
-    if (selectedDate) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      url += `?date=${dateStr}`;
-    }
-    fetch(url)
+    fetch('https://cse-maverick-be-platform.onrender.com/sector-daily-history')
       .then(res => res.json())
       .then(data => {
-        setMomentum(data.momentum || []);
-        setSectorData(data.sectors || []);
+        // Filter for the latest date in the data
+        const allRows: SectorDailyHistoryRow[] = data.data || [];
+        if (!allRows.length) {
+          setMomentum([]);
+          setLoading(false);
+          return;
+        }
+        const latestDate = allRows.reduce((max: string, row: SectorDailyHistoryRow) => row.date > max ? row.date : max, allRows[0].date);
+        const latestRows = allRows.filter((row: SectorDailyHistoryRow) => row.date === latestDate);
+        setMomentum(latestRows);
         setLoading(false);
       })
       .catch(() => {
         setError('Failed to load sector momentum data');
         setLoading(false);
       });
-  }, [tab, selectedDate]);
+  }, [tab]);
 
   // Build sector -> stocks map
   const sectorMap = useMemo<Record<string, string[]>>(() => {
@@ -271,6 +286,7 @@ export default function SectorAnalysisPage() {
     sectors.forEach((s: Sector) => {
       map[s.sector] = s.codes;
     });
+    console.log('Sector map:', map); // Debug log
     return map;
   }, [sectors]);
 
@@ -286,6 +302,47 @@ export default function SectorAnalysisPage() {
     });
     return result;
   }, [filteredSectors, sectorMap, stockData]);
+
+  // Fetch OHLCV data for each symbol in the selected sector and date range
+  useEffect(() => {
+    if (tab !== 2 || !selectedLeadersSector || !leadersStartDate || !leadersEndDate) return;
+    setLoading(true);
+    setError(null);
+    const startDateStr = leadersStartDate.toISOString().split('T')[0];
+    const endDateStr = leadersEndDate.toISOString().split('T')[0];
+    const sectorCodes = sectorMap[selectedLeadersSector] || [];
+    if (sectorCodes.length === 0) {
+      setError('No symbols found for the selected sector');
+      setLoading(false);
+      return;
+    }
+    const fetchPromises = sectorCodes.map(symbol =>
+      fetch(`https://cse-maverick-be-platform.onrender.com/api/ohlcv/${symbol}?start=${startDateStr}&end=${endDateStr}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ohlcv || !Array.isArray(data.ohlcv) || data.ohlcv.length === 0) {
+            return { symbol, startPrice: undefined, endPrice: undefined };
+          }
+          // Sort by date ascending
+          const sorted = [...data.ohlcv].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          return {
+            symbol,
+            startPrice: sorted[0].close,
+            endPrice: sorted[sorted.length - 1].close
+          };
+        })
+        .catch(() => ({ symbol, startPrice: undefined, endPrice: undefined }))
+    );
+    Promise.all(fetchPromises)
+      .then(results => {
+        setLeadersStockData(results);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to load OHLCV data');
+        setLoading(false);
+      });
+  }, [tab, selectedLeadersSector, leadersStartDate, leadersEndDate, sectorMap]);
 
   // Aggregate data by sector (for Aggregate Turnover tab)
   const aggregateBySector = useMemo<AggregateSector[]>(() => {
@@ -432,35 +489,6 @@ export default function SectorAnalysisPage() {
     });
   }, [selectedTrendSectors, sectorHistory, trendEndDate]);
 
-  // Sorting handler (now for momentum)
-  const handleSort = (column: 'sector' | 'gain3' | 'gain5' | 'gain10') => {
-    if (orderBy === column) {
-      setOrder(order === 'asc' ? 'desc' : 'asc');
-    } else {
-      setOrderBy(column);
-      setOrder('asc');
-    }
-  };
-
-  // Sort gains before rendering
-  const sortedMomentum = React.useMemo(() => {
-    const sorted = [...momentum];
-    sorted.sort((a, b) => {
-      let aValue: string | number | null = a[orderBy];
-      let bValue: string | number | null = b[orderBy];
-      if (aValue === null) return 1;
-      if (bValue === null) return -1;
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-      }
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return order === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-      return 0;
-    });
-    return sorted;
-  }, [momentum, orderBy, order]);
-
   // Add pull-to-refresh handlers
   const handlePullStart = () => {
     if (window.scrollY === 0) {
@@ -516,6 +544,71 @@ export default function SectorAnalysisPage() {
     swipeDuration: 500,
     touchEventOptions: { passive: false }
   });
+
+  const handleMomentumSort = (column: 'sector' | 'weekly_momentum' | 'monthly_momentum' | 'three_month_momentum') => {
+    if (momentumOrderBy === column) {
+      setMomentumOrder(momentumOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setMomentumOrderBy(column);
+      setMomentumOrder('asc');
+    }
+  };
+
+  const sortedMomentumRows = React.useMemo(() => {
+    const sorted = [...momentum];
+    sorted.sort((a, b) => {
+      let aValue: string | number | null = a[momentumOrderBy];
+      let bValue: string | number | null = b[momentumOrderBy];
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return momentumOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+      }
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return momentumOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      return 0;
+    });
+    return sorted;
+  }, [momentum, momentumOrderBy, momentumOrder]);
+
+  // Compute gain/loss for sorting
+  const leadersStockDataWithGain = useMemo<LeadersStockRow[]>(() => {
+    return leadersStockData.map(stock => {
+      const gainLoss = (stock.startPrice !== undefined && stock.endPrice !== undefined)
+        ? ((stock.endPrice - stock.startPrice) / stock.startPrice) * 100
+        : null;
+      return { ...stock, gainLoss };
+    });
+  }, [leadersStockData]);
+
+  // Sort the data
+  const sortedLeadersStockData = useMemo<LeadersStockRow[]>(() => {
+    const sorted = [...leadersStockDataWithGain];
+    sorted.sort((a, b) => {
+      let aValue: any = (leadersOrderBy === 'gainLoss') ? a.gainLoss : (a as any)[leadersOrderBy];
+      let bValue: any = (leadersOrderBy === 'gainLoss') ? b.gainLoss : (b as any)[leadersOrderBy];
+      if (aValue === undefined || aValue === null) return 1;
+      if (bValue === undefined || bValue === null) return -1;
+      if (typeof aValue === 'string') {
+        return leadersOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+      }
+      if (typeof aValue === 'number') {
+        return leadersOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      return 0;
+    });
+    return sorted;
+  }, [leadersStockDataWithGain, leadersOrderBy, leadersOrder]);
+
+  const handleLeadersSort = (column: 'symbol' | 'startPrice' | 'endPrice' | 'gainLoss') => {
+    if (leadersOrderBy === column) {
+      setLeadersOrder(leadersOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setLeadersOrderBy(column);
+      setLeadersOrder('asc');
+    }
+  };
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f7fafc' }}>
@@ -667,201 +760,92 @@ export default function SectorAnalysisPage() {
                 textTransform: 'none' 
               }} 
             />
+            <Tab 
+              label="Leaders and Laggards" 
+              sx={{ 
+                fontWeight: 700, 
+                color: '#f59e0b', 
+                borderBottom: tab === 2 ? '2.5px solid #f59e0b' : undefined, 
+                minWidth: { xs: 120, sm: 180 }, 
+                textTransform: 'none' 
+              }} 
+            />
           </Tabs>
         </Paper>
 
         {tab === 0 && (
           <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mt: { xs: 0.5, sm: 1 } }}>
             <Grid item xs={12}>
-              <Paper 
-                sx={{ 
-                  p: { xs: 1, sm: 2 },
-                  position: 'relative',
-                  '&:hover': {
-                    boxShadow: isMobile ? 1 : 2
-                  }
-                }}
-              >
+              <Paper sx={{ p: { xs: 1, sm: 2 }, position: 'relative' }}>
                 {loading && (
                   <Box sx={{ display: 'flex', justifyContent: 'center', my: { xs: 3, sm: 6 } }}>
                     <CircularProgress />
                   </Box>
                 )}
                 {error && (
-                  <Alert 
-                    severity="error" 
-                    sx={{ 
-                      mb: { xs: 1.5, sm: 3 },
-                      '& .MuiAlert-message': {
-                        fontSize: { xs: '0.875rem', sm: '1rem' }
-                      }
-                    }}
-                  >
-                    {error}
-                  </Alert>
+                  <Alert severity="error" sx={{ mb: { xs: 1.5, sm: 3 } }}>{error}</Alert>
                 )}
                 {!loading && !error && (
-                  <Paper 
-                    elevation={1} 
-                    sx={{ 
-                      borderRadius: 2, 
-                      p: { xs: 0.5, sm: 2 }, 
-                      overflowX: 'auto',
-                      '&::-webkit-scrollbar': {
-                        height: { xs: 4, sm: 6 },
-                        width: { xs: 4, sm: 6 }
-                      },
-                      '&::-webkit-scrollbar-thumb': {
-                        bgcolor: 'rgba(0,0,0,0.2)',
-                        borderRadius: 2
-                      }
-                    }}
-                  >
-                    <TableContainer 
-                      ref={tableRef}
-                      sx={{ 
-                        maxHeight: { xs: 400, sm: 520 },
-                        '& .MuiTableRow-root:hover': {
-                          bgcolor: alpha(theme.palette.primary.main, 0.04)
-                        }
-                      }}
-                    >
-                      <Table size={isMobile ? "small" : "medium"} stickyHeader>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 100, sm: 120 }, py: { xs: 1, sm: 1.5 } }}>
-                              <TableSortLabel
-                                active={orderBy === 'sector'}
-                                direction={orderBy === 'sector' ? order : 'asc'}
-                                onClick={() => handleSort('sector')}
-                                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                              >
-                                Sector
-                              </TableSortLabel>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>
+                            <TableSortLabel
+                              active={momentumOrderBy === 'sector'}
+                              direction={momentumOrderBy === 'sector' ? momentumOrder : 'asc'}
+                              onClick={() => handleMomentumSort('sector')}
+                            >
+                              Sector
+                            </TableSortLabel>
+                          </TableCell>
+                          <TableCell align="right">
+                            <TableSortLabel
+                              active={momentumOrderBy === 'weekly_momentum'}
+                              direction={momentumOrderBy === 'weekly_momentum' ? momentumOrder : 'asc'}
+                              onClick={() => handleMomentumSort('weekly_momentum')}
+                            >
+                              Weekly Momentum (5d)
+                            </TableSortLabel>
+                          </TableCell>
+                          <TableCell align="right">
+                            <TableSortLabel
+                              active={momentumOrderBy === 'monthly_momentum'}
+                              direction={momentumOrderBy === 'monthly_momentum' ? momentumOrder : 'asc'}
+                              onClick={() => handleMomentumSort('monthly_momentum')}
+                            >
+                              Monthly Momentum (20d)
+                            </TableSortLabel>
+                          </TableCell>
+                          <TableCell align="right">
+                            <TableSortLabel
+                              active={momentumOrderBy === 'three_month_momentum'}
+                              direction={momentumOrderBy === 'three_month_momentum' ? momentumOrder : 'asc'}
+                              onClick={() => handleMomentumSort('three_month_momentum')}
+                            >
+                              3-Month Momentum (60d)
+                            </TableSortLabel>
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {sortedMomentumRows.map((row: any) => (
+                          <TableRow key={row.sector}>
+                            <TableCell>{row.sector}</TableCell>
+                            <TableCell align="right" sx={{ color: row.weekly_momentum > 0 ? '#16a34a' : row.weekly_momentum < 0 ? '#dc2626' : undefined, fontWeight: 600 }}>
+                              {row.weekly_momentum != null ? row.weekly_momentum.toFixed(2) + '%' : '—'}
                             </TableCell>
-                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
-                              <Tooltip title="Based on trading activity in the past 3 trading days." arrow>
-                                <span>
-                                  <TableSortLabel
-                                    active={orderBy === 'gain3'}
-                                    direction={orderBy === 'gain3' ? order : 'asc'}
-                                    onClick={() => handleSort('gain3')}
-                                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                                  >
-                                    3 Trading Day Momentum
-                                  </TableSortLabel>
-                                </span>
-                              </Tooltip>
+                            <TableCell align="right" sx={{ color: row.monthly_momentum > 0 ? '#16a34a' : row.monthly_momentum < 0 ? '#dc2626' : undefined, fontWeight: 600 }}>
+                              {row.monthly_momentum != null ? row.monthly_momentum.toFixed(2) + '%' : '—'}
                             </TableCell>
-                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
-                              <Tooltip title="Based on trading activity in the past 5 trading days." arrow>
-                                <span>
-                                  <TableSortLabel
-                                    active={orderBy === 'gain5'}
-                                    direction={orderBy === 'gain5' ? order : 'asc'}
-                                    onClick={() => handleSort('gain5')}
-                                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                                  >
-                                    5 Trading Day Momentum
-                                  </TableSortLabel>
-                                </span>
-                              </Tooltip>
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', minWidth: { xs: 90, sm: 110 }, py: { xs: 1, sm: 1.5 } }} align="right">
-                              <Tooltip title="Based on trading activity in the past 10 trading days." arrow>
-                                <span>
-                                  <TableSortLabel
-                                    active={orderBy === 'gain10'}
-                                    direction={orderBy === 'gain10' ? order : 'asc'}
-                                    onClick={() => handleSort('gain10')}
-                                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                                  >
-                                    10 Trading Day Momentum
-                                  </TableSortLabel>
-                                </span>
-                              </Tooltip>
+                            <TableCell align="right" sx={{ color: row.three_month_momentum > 0 ? '#16a34a' : row.three_month_momentum < 0 ? '#dc2626' : undefined, fontWeight: 600 }}>
+                              {row.three_month_momentum != null ? row.three_month_momentum.toFixed(2) + '%' : '—'}
                             </TableCell>
                           </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {sortedMomentum.map((row) => (
-                            <TableRow key={row.sector} hover>
-                              <TableCell sx={{ fontWeight: 500, py: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>{row.sector}</TableCell>
-                              <TableCell align="right" sx={{ 
-                                color: row.gain3 != null ? (row.gain3 > 0 ? 'success.main' : row.gain3 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', 
-                                fontWeight: 600,
-                                py: { xs: 1, sm: 1.5 },
-                                fontSize: { xs: '0.875rem', sm: '1rem' }
-                              }}>
-                                {row.gain3 !== null ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                    {(row.gain3 * 100).toFixed(2) + '%'}
-                                    {row.gain3 > 0 && <span style={{ color: '#16a34a', marginLeft: 4 }}>▲</span>}
-                                    {row.gain3 < 0 && <span style={{ color: '#ef4444', marginLeft: 4 }}>▼</span>}
-                                  </span>
-                                ) : '—'}
-                              </TableCell>
-                              <TableCell align="right" sx={{ 
-                                color: row.gain5 != null ? (row.gain5 > 0 ? 'success.main' : row.gain5 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', 
-                                fontWeight: 600,
-                                py: { xs: 1, sm: 1.5 },
-                                fontSize: { xs: '0.875rem', sm: '1rem' }
-                              }}>
-                                {row.gain5 !== null ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                    {(row.gain5 * 100).toFixed(2) + '%'}
-                                    {row.gain5 > 0 && <span style={{ color: '#16a34a', marginLeft: 4 }}>▲</span>}
-                                    {row.gain5 < 0 && <span style={{ color: '#ef4444', marginLeft: 4 }}>▼</span>}
-                                  </span>
-                                ) : '—'}
-                              </TableCell>
-                              <TableCell align="right" sx={{ 
-                                color: row.gain10 != null ? (row.gain10 > 0 ? 'success.main' : row.gain10 < 0 ? 'error.main' : 'text.primary') : 'text.secondary', 
-                                fontWeight: 600,
-                                py: { xs: 1, sm: 1.5 },
-                                fontSize: { xs: '0.875rem', sm: '1rem' }
-                              }}>
-                                {row.gain10 !== null ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                    {(row.gain10 * 100).toFixed(2) + '%'}
-                                    {row.gain10 > 0 && <span style={{ color: '#16a34a', marginLeft: 4 }}>▲</span>}
-                                    {row.gain10 < 0 && <span style={{ color: '#ef4444', marginLeft: 4 }}>▼</span>}
-                                  </span>
-                                ) : '—'}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 1 }}>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        endIcon={<ArrowForwardIosIcon sx={{ fontSize: 18 }} />}
-                        href="/cse-insights"
-                        sx={{
-                          borderRadius: 999,
-                          px: 2,
-                          py: 0.7,
-                          fontWeight: 500,
-                          fontSize: { xs: '0.97rem', sm: '1.03rem' },
-                          boxShadow: '0 1px 4px rgba(25, 118, 210, 0.07)',
-                          textTransform: 'none',
-                          bgcolor: '#f3f8fd',
-                          color: '#2563eb',
-                          borderColor: '#b6d4fa',
-                          minWidth: 0,
-                          maxWidth: 340,
-                          width: '100%',
-                          justifyContent: 'center',
-                          '&:hover': { bgcolor: '#e3f2fd', borderColor: '#2563eb', color: '#1976d2' },
-                        }}
-                      >
-                        Click here to Navigate to pick the best counters of a sector!
-                      </Button>
-                    </Box>
-                  </Paper>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 )}
               </Paper>
             </Grid>
@@ -1034,6 +1018,187 @@ export default function SectorAnalysisPage() {
                     }}
                   >
                     {selectedTrendSectors.length ? 'No consistent momentum data available for the selected sector(s).' : 'Please select sectors to view their momentum trends.'}
+                  </Typography>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
+        )}
+
+        {tab === 2 && (
+          <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mt: { xs: 0.5, sm: 1 } }}>
+            <Grid item xs={12}>
+              <Paper 
+                sx={{ 
+                  p: { xs: 1, sm: 2 },
+                  position: 'relative',
+                  '&:hover': {
+                    boxShadow: isMobile ? 1 : 2
+                  }
+                }}
+              >
+                <Box sx={{ 
+                  mb: { xs: 2, sm: 3 }, 
+                  display: 'flex', 
+                  flexDirection: { xs: 'column', sm: 'row' }, 
+                  alignItems: { xs: 'stretch', sm: 'center' }, 
+                  gap: { xs: 1, sm: 2 } 
+                }}>
+                  <FormControl 
+                    size="small" 
+                    sx={{ 
+                      minWidth: { xs: '100%', sm: 220 },
+                      '& .MuiOutlinedInput-root': {
+                        '&:hover': {
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'primary.main'
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <InputLabel>Sector</InputLabel>
+                    <Select
+                      value={selectedLeadersSector}
+                      label="Sector"
+                      onChange={(e) => setSelectedLeadersSector(e.target.value)}
+                      sx={{ 
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
+                        '& .MuiSelect-select': {
+                          py: { xs: 1, sm: 1.5 }
+                        }
+                      }}
+                    >
+                      {sectorList.map(sector => (
+                        <MenuItem key={sector} value={sector} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                          {sector}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <DatePicker
+                      label="Start Date"
+                      value={leadersStartDate}
+                      onChange={date => setLeadersStartDate(date)}
+                      maxDate={leadersEndDate || undefined}
+                      slotProps={{ 
+                        textField: { 
+                          size: 'small', 
+                          sx: { 
+                            minWidth: { xs: '100%', sm: 140 },
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            '& .MuiOutlinedInput-root': {
+                              '&:hover': {
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: 'primary.main'
+                                }
+                              }
+                            }
+                          } 
+                        } 
+                      }}
+                    />
+                    <DatePicker
+                      label="End Date"
+                      value={leadersEndDate}
+                      onChange={date => setLeadersEndDate(date)}
+                      minDate={leadersStartDate || undefined}
+                      slotProps={{ 
+                        textField: { 
+                          size: 'small', 
+                          sx: { 
+                            minWidth: { xs: '100%', sm: 140 },
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            '& .MuiOutlinedInput-root': {
+                              '&:hover': {
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: 'primary.main'
+                                }
+                              }
+                            }
+                          } 
+                        } 
+                      }}
+                    />
+                  </LocalizationProvider>
+                </Box>
+
+                {loading && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: { xs: 3, sm: 6 } }}>
+                    <CircularProgress />
+                  </Box>
+                )}
+
+                {error && (
+                  <Alert severity="error" sx={{ mb: { xs: 1.5, sm: 3 } }}>{error}</Alert>
+                )}
+
+                {!loading && !error && selectedLeadersSector && (
+                  <TableContainer>
+                    <Table size="small" sx={{ minWidth: 400 }}>
+                      <TableHead>
+                        <TableRow sx={{ position: 'sticky', top: 0, bgcolor: '#f9fafb', zIndex: 1 }}>
+                          <TableCell
+                            onClick={() => handleLeadersSort('symbol')}
+                            sx={{ cursor: 'pointer', fontWeight: 700, color: leadersOrderBy === 'symbol' ? '#2563eb' : undefined }}
+                          >
+                            Symbol
+                            {leadersOrderBy === 'symbol' && (leadersOrder === 'asc' ? ' ▲' : ' ▼')}
+                          </TableCell>
+                          <TableCell
+                            align="right"
+                            onClick={() => handleLeadersSort('startPrice')}
+                            sx={{ cursor: 'pointer', fontWeight: 700, color: leadersOrderBy === 'startPrice' ? '#2563eb' : undefined }}
+                          >
+                            Start Price
+                            {leadersOrderBy === 'startPrice' && (leadersOrder === 'asc' ? ' ▲' : ' ▼')}
+                          </TableCell>
+                          <TableCell
+                            align="right"
+                            onClick={() => handleLeadersSort('endPrice')}
+                            sx={{ cursor: 'pointer', fontWeight: 700, color: leadersOrderBy === 'endPrice' ? '#2563eb' : undefined }}
+                          >
+                            End Price
+                            {leadersOrderBy === 'endPrice' && (leadersOrder === 'asc' ? ' ▲' : ' ▼')}
+                          </TableCell>
+                          <TableCell
+                            align="right"
+                            onClick={() => handleLeadersSort('gainLoss')}
+                            sx={{ cursor: 'pointer', fontWeight: 700, color: leadersOrderBy === 'gainLoss' ? '#2563eb' : undefined }}
+                          >
+                            Gain/Loss (%)
+                            {leadersOrderBy === 'gainLoss' && (leadersOrder === 'asc' ? ' ▲' : ' ▼')}
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {sortedLeadersStockData.map((stock, idx) => (
+                          <TableRow key={stock.symbol} sx={{ bgcolor: idx % 2 === 0 ? '#fff' : '#f3f4f6' }}>
+                            <TableCell>{stock.symbol}</TableCell>
+                            <TableCell align="right">{stock.startPrice !== undefined ? stock.startPrice.toFixed(2) : '-'}</TableCell>
+                            <TableCell align="right">{stock.endPrice !== undefined ? stock.endPrice.toFixed(2) : '-'}</TableCell>
+                            <TableCell align="right" sx={{ color: stock.gainLoss != null ? (stock.gainLoss > 0 ? '#16a34a' : stock.gainLoss < 0 ? '#dc2626' : undefined) : undefined, fontWeight: 600 }}>
+                              {stock.gainLoss != null ? stock.gainLoss.toFixed(2) + '%' : '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+
+                {!loading && !error && !selectedLeadersSector && (
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      mt: 2,
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      textAlign: 'center'
+                    }}
+                  >
+                    Please select a sector to view its stocks.
                   </Typography>
                 )}
               </Paper>
